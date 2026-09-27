@@ -1,0 +1,1 @@
+export interface MapTheme { id: string; wallMaterials: number[]; floorColor: string; ceilingColor: string; fogDistance: number; minimumBrightness: number; ambientBrightness: number; propTypes: string[] }

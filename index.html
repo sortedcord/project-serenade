@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Below the Signal</title>
+  </head>
+  <body>
+    <main id="game-shell">
+      <canvas id="game-canvas" width="320" height="180" aria-label="Below the Signal game"></canvas>
+      <section id="hud" aria-live="polite">
+        <div id="crosshair">+</div>
+        <div id="prompt"></div>
+        <div id="controls">WASD move · ← → turn · mouse / PgUp PgDn look · E interact · M map · F3 debug · R regenerate</div>
+      </section>
+      <div id="capture-message">Click to capture mouse</div>
+      <div id="error" role="alert"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
