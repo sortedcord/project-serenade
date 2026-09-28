@@ -22,9 +22,13 @@ Open the Vite URL, then click the view to capture the mouse. Pointer lock is opt
 - **M** toggle the top-down map
 - **F3** toggle development stats
 - **R** generate a fresh seeded world
-- **Escape** release mouse capture
+- **Escape** pauses and releases mouse capture; press it again to resume. Losing browser focus also pauses. Resume does not require pointer lock; click the view to capture the mouse again.
+- In the pause menu, **W/S** or **↑/↓** select **Resume** or **Settings**; **Enter** activates the selection.
+- Open **Settings** from the pause menu to adjust walking speed, bobbing rate, mouse look sensitivity, ambient occlusion, minimap size (96–256 pixels), and minimap screen corner. Changes apply immediately and save in this browser; 0% disables occlusion shading. **Done** or **Escape** returns to the pause menu.
 
 An exit is the gold marker on the map; walk into it to travel to another cached submap. Returning through its reciprocal connection restores the original map.
+
+The always-visible minimap follows the player with north at the top. It shows nearby walls/floor, your facing direction, amber props, and gold exits. **M** remains the separate full-map debugger.
 
 ## Structure
 
@@ -35,4 +39,4 @@ An exit is the gold marker on the map; walk into it to travel to another cached 
 - `src/debug`: top-down map and development overlay
 - `tests`: deterministic generation and grid logic tests
 
-Maps are generated before rendering and validated on creation. The renderer reuses its per-column depth buffers, uses perpendicular DDA distances, and draws billboards only where they are closer than the wall depth.
+Maps are generated before rendering and validated on creation. The renderer reuses its per-column depth buffers, uses perpendicular DDA distances, and draws billboards only where they are closer than the wall depth. Geometry-based ambient occlusion darkens concave wall corners and wall/floor and wall/ceiling contacts without changing ray distances.

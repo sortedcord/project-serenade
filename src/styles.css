@@ -10,3 +10,38 @@ body { overflow: hidden; }
 #capture-message { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); padding: 8px 12px; border: 1px solid #82947c; background: #0a110ecc; color: #cbd7bd; font-size: 12px; transition: opacity .2s; }
 #capture-message.hidden { opacity: 0; }
 #error { position: absolute; inset: 8%; display: none; padding: 18px; white-space: pre-wrap; background: #280e12ee; border: 1px solid #d25d5d; color: #ffd5c7; overflow: auto; }
+#minimap { position: absolute; width: 160px; height: 160px; max-width: calc(100vw - 28px); max-height: calc(100vh - 100px); image-rendering: pixelated; border: 1px solid #596e5c; box-shadow: 0 3px 15px #0008; opacity: .92; }
+#minimap[data-position="top-left"] { top: 54px; left: 14px; }
+#minimap[data-position="top-right"] { top: 54px; right: 14px; }
+#minimap[data-position="bottom-left"] { bottom: 38px; left: 14px; }
+#minimap[data-position="bottom-right"] { bottom: 38px; right: 14px; }
+#settings-shade { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 18px; background: #020504c9; color: #d9dfd2; text-shadow: none; }
+#settings-shade[hidden] { display: none; }
+#pause-shade { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 20px; background: #020504bf; }
+#pause-shade[hidden] { display: none; }
+#pause-panel { width: min(100%, 350px); padding: 29px; border: 1px solid #596e5c; background: linear-gradient(145deg, #17201b, #0a0f0d 72%); box-shadow: 0 20px 70px #000c; }
+#pause-title { margin: 8px 0; color: #e0e6d7; font-size: 27px; font-weight: 400; }
+.pause-intro { margin: 0 0 23px; color: #8c9b8b; font-size: 12px; }
+#pause-panel nav { display: grid; gap: 9px; }
+#pause-panel button { padding: 11px 14px; border: 1px solid #445449; background: #101713; color: #aebaaa; font: 14px "Courier New", monospace; cursor: pointer; text-align: left; }
+#pause-panel button.selected, #pause-panel button:focus { outline: none; border-color: #b2c48b; background: #293526; color: #e1e7d2; }
+.pause-help { margin: 20px 0 0; color: #8a9a84; font-size: 10px; line-height: 1.7; }
+#settings-panel { width: min(100%, 510px); max-height: calc(100vh - 36px); overflow-y: auto; padding: 25px 27px 20px; border: 1px solid #596e5c; background: linear-gradient(145deg, #17201b, #0a0f0d 72%); box-shadow: 0 20px 70px #000c; outline: none; }
+.settings-header, .settings-footer, .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.settings-header { padding-bottom: 16px; border-bottom: 1px solid #344137; }
+.settings-kicker { margin: 0 0 5px; color: #8ea88d; font-size: 9px; letter-spacing: .18em; }
+.settings-header h1 { margin: 0; color: #e0e6d7; font-size: 21px; font-weight: 400; }
+.settings-icon-button { width: 32px; height: 32px; border: 1px solid #445449; background: #101713; color: #c8d0c7; font-size: 23px; cursor: pointer; }
+.settings-intro { margin: 15px 0 22px; color: #97a295; font-size: 12px; }
+.setting-row { min-height: 76px; border-top: 1px solid #26332a; cursor: pointer; }
+.setting-copy { display: grid; gap: 6px; }
+.setting-name { color: #d6ddce; font-size: 13px; }
+.setting-description { color: #79877a; font-size: 10px; }
+.setting-control { display: grid; justify-items: end; gap: 9px; min-width: 155px; }
+.setting-control output { color: #c5d3a7; font-size: 12px; font-variant-numeric: tabular-nums; }
+.setting-control input { width: 155px; accent-color: #b3c48a; cursor: pointer; }
+.setting-control select { width: 155px; padding: 7px 5px; border: 1px solid #596e5c; background: #17201b; color: #d9dfd2; font: 11px "Courier New", monospace; }
+.settings-footer { margin-top: 14px; padding-top: 17px; border-top: 1px solid #344137; color: #788679; font-size: 10px; }
+.settings-footer button { padding: 8px 19px; border: 1px solid #9cae7b; background: #293526; color: #e1e7d2; font: 12px "Courier New", monospace; cursor: pointer; }
+#settings-panel button:focus-visible, #settings-panel input:focus-visible, #settings-panel select:focus-visible { outline: 2px solid #c5d3a7; outline-offset: 3px; }
+@media (max-width: 520px) { #settings-panel { padding: 20px 17px 16px; } .setting-row { gap: 10px; } .setting-description { max-width: 175px; line-height: 1.4; } .setting-control, .setting-control input { min-width: 112px; width: 112px; } }

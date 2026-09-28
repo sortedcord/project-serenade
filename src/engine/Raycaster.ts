@@ -17,6 +17,7 @@ export class Raycaster {
   readonly hitSides: Uint8Array;
   readonly textureCoordinates: Float32Array;
   readonly wallStarts: Int16Array;
+  readonly cornerOcclusion: Float32Array;
   readonly wallEnds: Int16Array;
 
   constructor(readonly width: number, readonly height: number) {
@@ -26,6 +27,7 @@ export class Raycaster {
     this.textureCoordinates = new Float32Array(width);
     this.wallStarts = new Int16Array(width);
     this.wallEnds = new Int16Array(width);
+    this.cornerOcclusion = new Float32Array(width);
   }
 
   cast(map: GameMap, player: Player): void {
@@ -72,6 +74,17 @@ export class Raycaster {
       wallHit -= Math.floor(wallHit);
       let textureX = Math.floor(wallHit * 32);
       if ((side === 0 && rayX > 0) || (side === 1 && rayY < 0)) textureX = 31 - textureX;
+      // A wall along the open side of either endpoint forms a concave corner.
+      // Fade its shadow along the face; isolated/exposed edges stay unshaded.
+      const frontX = side === 0 ? mapX - stepX : mapX;
+      const frontY = side === 1 ? mapY - stepY : mapY;
+      const alongX = side === 1 ? 1 : 0;
+      const alongY = side === 0 ? 1 : 0;
+      const near = map.tiles[frontY - alongY]?.[frontX - alongX];
+      const far = map.tiles[frontY + alongY]?.[frontX + alongX];
+      const nearShadow = near !== undefined && near !== 0 ? Math.max(0, 1 - wallHit * 4) : 0;
+      const farShadow = far !== undefined && far !== 0 ? Math.max(0, 1 - (1 - wallHit) * 4) : 0;
+      this.cornerOcclusion[x] = Math.max(nearShadow, farShadow);
       this.depthBuffer[x] = distance;
       this.wallTypes[x] = tile;
       this.hitSides[x] = side;

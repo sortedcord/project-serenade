@@ -1,21 +1,26 @@
 import { DebugMapRenderer } from '../debug/DebugMapRenderer';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { validateMap } from '../generation/MapValidator';
+import type { GameSettings } from './GameSettings';
 import { themes } from '../themes/themes';
 import type { GameMap } from '../world/GameMap';
 import { WorldManager } from '../world/WorldManager';
 import { Input } from './Input';
-import { createPlayer, rotatePlayer, type Player } from './Player';
+import { configurePlayerSettings, createPlayer, rotatePlayer, type Player } from './Player';
 import { Renderer } from './Renderer';
+import { MinimapRenderer } from './MinimapRenderer';
+import { SettingsScreen } from './SettingsScreen';
+import { PauseMenu } from './PauseMenu';
 import { nearestInteractable } from './SpriteAssets';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
   readonly renderer: Renderer;
   readonly debugMap = new DebugMapRenderer();
   readonly debug = new DebugOverlay();
+  private readonly minimap: MinimapRenderer;
   readonly world: WorldManager;
   player: Player;
-  private input: Input;
+  private readonly input: Input;
   private frameHandle = 0;
   private previousTime = 0;
   private fps = 0;
@@ -23,6 +28,8 @@ export class Game {
   private fpsElapsed = 0;
   private showMap = false;
   private destroyed = false;
+  private readonly settingsScreen: SettingsScreen;
+  private readonly pauseMenu: PauseMenu;
   private transitionCooldown = 0;
   private readonly canvas: HTMLCanvasElement;
   private readonly captureMessage: HTMLElement;
@@ -35,7 +42,20 @@ export class Game {
     this.world = new WorldManager(seed);
     this.player = createPlayer(this.world.currentMap);
     this.renderer = new Renderer(canvas);
+    const minimapCanvas = document.querySelector<HTMLCanvasElement>('#minimap');
+    if (!minimapCanvas) throw new Error('Game page is missing the minimap canvas.');
+    this.minimap = new MinimapRenderer(minimapCanvas);
     this.input = new Input(canvas, this.player);
+    this.settingsScreen = new SettingsScreen((settings: GameSettings) => {
+      configurePlayerSettings(settings);
+      this.renderer.ambientOcclusion = settings.ambientOcclusion;
+      this.minimap.configure(settings.minimapPosition, settings.minimapSize);
+    }, () => this.pauseMenu.show());
+    this.pauseMenu = new PauseMenu(canvas, this.settingsScreen, paused => {
+      this.input.setSuspended(paused);
+      this.captureMessage.classList.toggle('hidden', paused || document.pointerLockElement === this.canvas);
+      if (paused) this.prompt.textContent = '';
+    });
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     window.addEventListener('keydown', this.onDebugKey);
   }
@@ -44,16 +64,18 @@ export class Game {
   destroy(): void {
     this.destroyed = true;
     cancelAnimationFrame(this.frameHandle);
+    this.pauseMenu.destroy();
     this.input.destroy();
+    this.settingsScreen.destroy();
     window.removeEventListener('keydown', this.onDebugKey);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
   }
   private readonly onPointerLockChange = (): void => {
-    this.captureMessage.classList.toggle('hidden', document.pointerLockElement === this.canvas);
+    this.captureMessage.classList.toggle('hidden', this.pauseMenu.paused || document.pointerLockElement === this.canvas);
   };
 
   private readonly onDebugKey = (event: KeyboardEvent): void => {
-    if (event.repeat || event.target instanceof HTMLInputElement) return;
+    if (event.repeat || event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || this.pauseMenu.paused) return;
     if (event.key === 'F3') { event.preventDefault(); this.debug.enabled = !this.debug.enabled; }
     if (event.key.toLowerCase() === 'r') this.regenerate();
   };
@@ -61,6 +83,12 @@ export class Game {
   private readonly frame = (time: number): void => {
     if (this.destroyed) return;
     const dt = Math.min(.08, Math.max(0, (time - this.previousTime) / 1000)); this.previousTime = time;
+    if (this.pauseMenu.paused) {
+      this.renderer.render(this.world.currentMap, this.player);
+      this.minimap.draw(this.world.currentMap, this.player);
+      this.frameHandle = requestAnimationFrame(this.frame);
+      return;
+    }
     const actions = this.input.update(this.world.currentMap, dt);
     if (actions.toggleDebugMap) this.showMap = !this.showMap;
     if (actions.interact) this.interact();
@@ -70,6 +98,7 @@ export class Game {
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
     this.prompt.textContent = target ? `E · ${String(target.properties?.label ?? target.type)}` : '';
     this.renderer.render(this.world.currentMap, this.player);
+    this.minimap.draw(this.world.currentMap, this.player);
     this.drawOverlays();
     this.frameHandle = requestAnimationFrame(this.frame);
   };
@@ -102,14 +131,14 @@ export class Game {
     this.player.positionY = transition.spawnY;
     rotatePlayer(this.player, transition.angle - Math.atan2(this.player.directionY, this.player.directionX));
     this.transitionCooldown = .8;
-    this.input.destroy();
-    this.input = new Input(this.canvas, this.player);
+    this.input.setPlayer(this.player);
   }
 
   private regenerate(): void {
     const seed = `sector-${Math.floor(Math.random() * 1_000_000)}`;
     const map = this.world.regenerate(seed);
-    this.player = createPlayer(map); this.input.destroy(); this.input = new Input(this.canvas, this.player);
+    this.player = createPlayer(map);
+    this.input.setPlayer(this.player);
   }
 
   private drawOverlays(): void {

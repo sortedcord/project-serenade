@@ -1,6 +1,6 @@
+import { DEFAULT_GAME_SETTINGS, type GameSettings } from './GameSettings';
 import type { GameMap } from '../world/GameMap';
 import { moveWithCollision } from './Collision';
-
 export const PLAYER_CONFIG = {
   movementSpeed: 3.2,
   strafeSpeed: 3.0,
@@ -12,8 +12,20 @@ export const PLAYER_CONFIG = {
   lookSpeed: 0.85,
   bobFrequency: 6,
   bobAmplitude: 0.012,
-} as const;
+};
 
+let gameSettings: GameSettings = { ...DEFAULT_GAME_SETTINGS };
+
+export function configurePlayerSettings(settings: Readonly<GameSettings>): void {
+  gameSettings = { ...settings };
+  PLAYER_CONFIG.movementSpeed = settings.movementSpeed;
+  PLAYER_CONFIG.bobFrequency = settings.bobFrequency;
+  PLAYER_CONFIG.mouseSensitivity = settings.mouseSensitivity;
+}
+
+export function getPlayerSettings(): Readonly<GameSettings> {
+  return gameSettings;
+}
 export interface Player {
   positionX: number;
   positionY: number;

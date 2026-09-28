@@ -11,7 +11,15 @@ export class Input {
   private readonly keys = new Set<string>();
   private readonly pendingActions: InputActions = { interact: false, toggleDebugMap: false };
   private readonly frameActions: InputActions = { interact: false, toggleDebugMap: false };
+  private suspended = false;
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (this.suspended) return;
+    if (event.target instanceof HTMLElement && event.target.closest('[role="dialog"]')) {
+      this.keys.clear();
+      this.pendingActions.interact = false;
+      this.pendingActions.toggleDebugMap = false;
+      return;
+    }
     const key = event.key.toLowerCase();
     if (key === ' ' || key.startsWith('arrow') || key === 'pageup' || key === 'pagedown') event.preventDefault();
     if (!event.repeat && key === 'e') this.pendingActions.interact = true;
@@ -21,11 +29,12 @@ export class Input {
   private readonly onKeyUp = (event: KeyboardEvent): void => { this.keys.delete(event.key.toLowerCase()); };
   private readonly onBlur = (): void => { this.keys.clear(); };
   private readonly onMouseMove = (event: MouseEvent): void => {
-    if (document.pointerLockElement !== this.canvas) return;
+    if (this.suspended || document.pointerLockElement !== this.canvas) return;
     rotatePlayer(this.player, event.movementX * PLAYER_CONFIG.mouseSensitivity);
     lookPlayer(this.player, -event.movementY * PLAYER_CONFIG.mouseSensitivity);
   };
   private readonly onCanvasClick = (): void => {
+    if (this.suspended) return;
     if (document.pointerLockElement !== this.canvas) void this.canvas.requestPointerLock();
   };
   private readonly onPointerLockChange = (): void => {
@@ -33,7 +42,7 @@ export class Input {
   };
   private readonly onPointerLockError = (): void => { this.keys.clear(); };
 
-  constructor(private readonly canvas: HTMLCanvasElement, private readonly player: Player) {
+  constructor(private readonly canvas: HTMLCanvasElement, private player: Player) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
@@ -44,6 +53,17 @@ export class Input {
   }
 
   get pointerLocked(): boolean { return document.pointerLockElement === this.canvas; }
+  setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
+    this.keys.clear();
+    this.pendingActions.interact = false;
+    this.pendingActions.toggleDebugMap = false;
+  }
+
+  setPlayer(player: Player): void {
+    this.player = player;
+    this.setSuspended(this.suspended);
+  }
 
   /** Applies controls once per simulation frame. */
   update(map: GameMap, deltaSeconds: number): InputActions {

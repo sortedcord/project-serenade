@@ -11,10 +11,57 @@
       <section id="hud" aria-live="polite">
         <div id="crosshair">+</div>
         <div id="prompt"></div>
-        <div id="controls">WASD move · ← → turn · mouse / PgUp PgDn look · E interact · M map · F3 debug · R regenerate</div>
+        <canvas id="minimap" width="96" height="96" aria-label="Nearby map: north up, gold exits, amber props, player direction" data-position="top-left"></canvas>
+        <div id="controls">WASD move · ← → turn · mouse / PgUp PgDn look · E interact · M map · F3 debug · R regenerate · Esc pause</div>
       </section>
       <div id="capture-message">Click to capture mouse</div>
       <div id="error" role="alert"></div>
+      <div id="pause-shade" hidden>
+        <section id="pause-panel" role="dialog" aria-modal="true" aria-labelledby="pause-title" tabindex="-1">
+          <p class="settings-kicker">BELOW THE SIGNAL</p>
+          <h1 id="pause-title">Paused</h1>
+          <p class="pause-intro">The tunnels can wait.</p>
+          <nav aria-label="Pause actions">
+            <button id="pause-resume" type="button">Resume</button>
+            <button id="pause-settings" type="button">Settings</button>
+          </nav>
+          <p class="pause-help">W / S or ↑ / ↓ select · Enter confirm · Esc resume</p>
+        </section>
+      </div>
+      <div id="settings-shade" hidden>
+        <section id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+          <header class="settings-header">
+            <div><p class="settings-kicker">FIELD EQUIPMENT</p><h1 id="settings-title">Control settings</h1></div>
+            <button id="settings-close" class="settings-icon-button" type="button" aria-label="Close settings">×</button>
+          </header>
+          <p class="settings-intro">Tune movement and camera response. Changes apply immediately.</p>
+          <label class="setting-row" for="setting-walk">
+            <span class="setting-copy"><span class="setting-name">Walking speed</span><span class="setting-description">Movement pace through the tunnels</span></span>
+            <span class="setting-control"><output id="setting-walk-value" for="setting-walk"></output><input id="setting-walk" type="range" min="1" max="6" step="0.1" /></span>
+          </label>
+          <label class="setting-row" for="setting-bob">
+            <span class="setting-copy"><span class="setting-name">Bobbing rate</span><span class="setting-description">Footstep camera rhythm · zero disables bob</span></span>
+            <span class="setting-control"><output id="setting-bob-value" for="setting-bob"></output><input id="setting-bob" type="range" min="0" max="12" step="0.1" /></span>
+          </label>
+          <label class="setting-row" for="setting-mouse">
+            <span class="setting-copy"><span class="setting-name">Mouse speed</span><span class="setting-description">Horizontal and vertical look sensitivity</span></span>
+            <span class="setting-control"><output id="setting-mouse-value" for="setting-mouse"></output><input id="setting-mouse" type="range" min="0.0005" max="0.006" step="0.0001" /></span>
+          </label>
+          <label class="setting-row" for="setting-ao">
+            <span class="setting-copy"><span class="setting-name">Ambient occlusion</span><span class="setting-description">Darkens wall corners and floor / ceiling contacts · zero disables</span></span>
+            <span class="setting-control"><output id="setting-ao-value" for="setting-ao"></output><input id="setting-ao" type="range" min="0" max="1" step="0.05" /></span>
+          </label>
+          <label class="setting-row" for="setting-minimap-size">
+            <span class="setting-copy"><span class="setting-name">Minimap size</span><span class="setting-description">On-screen size of the nearby map</span></span>
+            <span class="setting-control"><output id="setting-minimap-size-value" for="setting-minimap-size"></output><input id="setting-minimap-size" type="range" min="96" max="256" step="8" /></span>
+          </label>
+          <label class="setting-row" for="setting-minimap-position">
+            <span class="setting-copy"><span class="setting-name">Minimap position</span><span class="setting-description">Choose a screen corner</span></span>
+            <span class="setting-control"><select id="setting-minimap-position"><option value="top-left">Top left</option><option value="top-right">Top right</option><option value="bottom-left">Bottom left</option><option value="bottom-right">Bottom right</option></select></span>
+          </label>
+          <footer class="settings-footer"><span>Settings save automatically on this device.</span><button id="settings-done" type="button">Done</button></footer>
+        </section>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
