@@ -28,6 +28,7 @@ Open the Vite URL, then click the view to capture the mouse. Pointer lock is opt
 
 An exit is the gold marker on the map; walk into it to travel to another cached submap. Returning through its reciprocal connection restores the original map.
 
+The top-right debug panel shows FPS and configurable map, seed, player, room/entity, world, and validation details. Settings let you toggle the panel and each information row, then adjust text opacity (10–100%) and size (8–22 px); all selections save in this browser.
 The always-visible minimap follows the player with north at the top. It shows nearby walls/floor, your facing direction, amber props, and gold exits. **M** remains the separate full-map debugger.
 
 ## Structure

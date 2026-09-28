@@ -11,6 +11,7 @@ import { Renderer } from './Renderer';
 import { MinimapRenderer } from './MinimapRenderer';
 import { SettingsScreen } from './SettingsScreen';
 import { PauseMenu } from './PauseMenu';
+import { DebugInfoPanel } from './DebugInfoPanel';
 import { nearestInteractable } from './SpriteAssets';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
@@ -18,6 +19,7 @@ export class Game {
   readonly debugMap = new DebugMapRenderer();
   readonly debug = new DebugOverlay();
   private readonly minimap: MinimapRenderer;
+  private readonly debugInfo: DebugInfoPanel;
   readonly world: WorldManager;
   player: Player;
   private readonly input: Input;
@@ -45,11 +47,13 @@ export class Game {
     const minimapCanvas = document.querySelector<HTMLCanvasElement>('#minimap');
     if (!minimapCanvas) throw new Error('Game page is missing the minimap canvas.');
     this.minimap = new MinimapRenderer(minimapCanvas);
+    this.debugInfo = new DebugInfoPanel();
     this.input = new Input(canvas, this.player);
     this.settingsScreen = new SettingsScreen((settings: GameSettings) => {
       configurePlayerSettings(settings);
       this.renderer.ambientOcclusion = settings.ambientOcclusion;
       this.minimap.configure(settings.minimapPosition, settings.minimapSize);
+      this.debugInfo.configure(settings);
     }, () => this.pauseMenu.show());
     this.pauseMenu = new PauseMenu(canvas, this.settingsScreen, paused => {
       this.input.setSuspended(paused);
@@ -95,6 +99,7 @@ export class Game {
     this.transitionCooldown = Math.max(0, this.transitionCooldown - dt);
     this.transitionAtExit();
     this.updateFps(dt);
+    this.debugInfo.updateFrame(dt);
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
     this.prompt.textContent = target ? `E · ${String(target.properties?.label ?? target.type)}` : '';
     this.renderer.render(this.world.currentMap, this.player);
@@ -106,6 +111,21 @@ export class Game {
   private updateFps(dt: number): void {
     this.fpsFrames++; this.fpsElapsed += dt;
     if (this.fpsElapsed >= .5) { this.fps = Math.round(this.fpsFrames / this.fpsElapsed); this.fpsFrames = 0; this.fpsElapsed = 0; }
+  }
+  private drawOverlays(): void {
+    const context = this.renderer.context, map = this.world.currentMap;
+    context.fillStyle = '#e0dfc7'; context.font = '7px monospace';
+    context.fillText(map.metadata.title ?? map.id, 5, this.renderer.height - 6);
+    if (this.showMap) this.debugMap.draw(context, map, { x: this.player.positionX, y: this.player.positionY, angle: Math.atan2(this.player.directionY, this.player.directionX) }, 8, 22, 150);
+    const errors = validateMap(map);
+    this.debugInfo.draw(map, this.player, this.world.state.discoveredMapIds.length, errors);
+    this.debug.draw(context, [
+      `FPS ${this.fps}`, `MAP ${map.id}`, `SEED ${map.metadata.seed ?? ''}`,
+      `POS ${this.player.positionX.toFixed(2)},${this.player.positionY.toFixed(2)}`,
+      `ANGLE ${Math.atan2(this.player.directionY, this.player.directionX).toFixed(2)}`,
+      `ROOMS ${map.rooms.length} PROPS ${map.entities.length}`, `VALID ${errors.length ? errors[0] : 'yes'}`,
+      `WORLD ${this.world.state.discoveredMapIds.length} maps`,
+    ]);
   }
 
   private interact(): void {
@@ -141,20 +161,6 @@ export class Game {
     this.input.setPlayer(this.player);
   }
 
-  private drawOverlays(): void {
-    const context = this.renderer.context, map = this.world.currentMap;
-    context.fillStyle = '#e0dfc7'; context.font = '7px monospace';
-    context.fillText(map.metadata.title ?? map.id, 5, this.renderer.height - 6);
-    if (this.showMap) this.debugMap.draw(context, map, { x: this.player.positionX, y: this.player.positionY, angle: Math.atan2(this.player.directionY, this.player.directionX) }, 8, 22, 150);
-    const errors = validateMap(map);
-    this.debug.draw(context, [
-      `FPS ${this.fps}`, `MAP ${map.id}`, `SEED ${map.metadata.seed ?? ''}`,
-      `POS ${this.player.positionX.toFixed(2)},${this.player.positionY.toFixed(2)}`,
-      `ANGLE ${Math.atan2(this.player.directionY, this.player.directionX).toFixed(2)}`,
-      `ROOMS ${map.rooms.length} PROPS ${map.entities.length}`, `VALID ${errors.length ? errors[0] : 'yes'}`,
-      `WORLD ${this.world.state.discoveredMapIds.length} maps`,
-    ]);
-  }
 }
 
 export function createStartingSeed(): string {

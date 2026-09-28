@@ -1,4 +1,4 @@
-import { GAME_SETTING_RANGES, MINIMAP_POSITIONS, loadGameSettings, saveGameSettings, type GameSettings, type MinimapPosition } from './GameSettings';
+import { DEBUG_INFO_FIELDS, GAME_SETTING_RANGES, MINIMAP_POSITIONS, loadGameSettings, saveGameSettings, type DebugInfoField, type GameSettings, type MinimapPosition } from './GameSettings';
 
 const controls = {
   movementSpeed: { input: '#setting-walk', output: '#setting-walk-value', digits: 1 },
@@ -6,6 +6,8 @@ const controls = {
   mouseSensitivity: { input: '#setting-mouse', output: '#setting-mouse-value', digits: 4 },
   ambientOcclusion: { input: '#setting-ao', output: '#setting-ao-value', digits: 0 },
   minimapSize: { input: '#setting-minimap-size', output: '#setting-minimap-size-value', digits: 0 },
+  debugTextOpacity: { input: '#setting-debug-opacity', output: '#setting-debug-opacity-value', digits: 0 },
+  debugTextSize: { input: '#setting-debug-size', output: '#setting-debug-size-value', digits: 0 },
 } as const;
 
 type SliderSetting = keyof typeof controls;
@@ -18,6 +20,8 @@ export class SettingsScreen {
   private readonly sliders: Record<SliderSetting, HTMLInputElement>;
   private readonly outputs: Record<SliderSetting, HTMLOutputElement>;
   private readonly positionSelect: HTMLSelectElement;
+  private readonly debugVisible: HTMLInputElement;
+  private readonly debugFieldOptions: HTMLElement;
   private readonly values: GameSettings;
 
   constructor(private readonly onChange: (settings: GameSettings) => void, private readonly onClose: () => void) {
@@ -31,14 +35,21 @@ export class SettingsScreen {
       mouseSensitivity: requireElement<HTMLInputElement>(controls.mouseSensitivity.input),
       ambientOcclusion: requireElement<HTMLInputElement>(controls.ambientOcclusion.input),
       minimapSize: requireElement<HTMLInputElement>(controls.minimapSize.input),
+      debugTextOpacity: requireElement<HTMLInputElement>(controls.debugTextOpacity.input),
+      debugTextSize: requireElement<HTMLInputElement>(controls.debugTextSize.input),
     };
     this.outputs = {
       movementSpeed: requireElement<HTMLOutputElement>(controls.movementSpeed.output),
       bobFrequency: requireElement<HTMLOutputElement>(controls.bobFrequency.output),
       mouseSensitivity: requireElement<HTMLOutputElement>(controls.mouseSensitivity.output),
-      ambientOcclusion: requireElement<HTMLOutputElement>(controls.ambientOcclusion.output),
       minimapSize: requireElement<HTMLOutputElement>(controls.minimapSize.output),
+      ambientOcclusion: requireElement<HTMLOutputElement>(controls.ambientOcclusion.output),
+      debugTextOpacity: requireElement<HTMLOutputElement>(controls.debugTextOpacity.output),
+      debugTextSize: requireElement<HTMLOutputElement>(controls.debugTextSize.output),
     };
+    this.debugVisible = requireElement<HTMLInputElement>('#setting-debug-visible');
+    this.debugFieldOptions = requireElement<HTMLElement>('#debug-field-options');
+    this.buildDebugFieldOptions();
     this.positionSelect = requireElement<HTMLSelectElement>('#setting-minimap-position');
     this.values = loadGameSettings();
     this.syncControls();
@@ -53,6 +64,10 @@ export class SettingsScreen {
     this.sliders.ambientOcclusion.addEventListener('input', this.onAmbientOcclusion);
     this.sliders.minimapSize.addEventListener('input', this.onMinimapSize);
     this.positionSelect.addEventListener('change', this.onMinimapPosition);
+    this.sliders.debugTextOpacity.addEventListener('input', this.onDebugTextOpacity);
+    this.sliders.debugTextSize.addEventListener('input', this.onDebugTextSize);
+    this.debugVisible.addEventListener('change', this.onDebugVisible);
+    for (const field of DEBUG_INFO_FIELDS) this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`)?.addEventListener('change', this.onDebugFieldChange);
   }
 
   get isOpen(): boolean { return !this.shade.hidden; }
@@ -67,6 +82,10 @@ export class SettingsScreen {
     this.sliders.ambientOcclusion.removeEventListener('input', this.onAmbientOcclusion);
     this.sliders.minimapSize.removeEventListener('input', this.onMinimapSize);
     this.positionSelect.removeEventListener('change', this.onMinimapPosition);
+    this.sliders.debugTextOpacity.removeEventListener('input', this.onDebugTextOpacity);
+    this.sliders.debugTextSize.removeEventListener('input', this.onDebugTextSize);
+    this.debugVisible.removeEventListener('change', this.onDebugVisible);
+    for (const field of DEBUG_INFO_FIELDS) this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`)?.removeEventListener('change', this.onDebugFieldChange);
   }
 
   readonly open = (): void => {
@@ -88,6 +107,8 @@ export class SettingsScreen {
   private readonly onBobFrequency = (): void => this.update('bobFrequency');
   private readonly onMouseSensitivity = (): void => this.update('mouseSensitivity');
   private readonly onAmbientOcclusion = (): void => this.update('ambientOcclusion');
+  private readonly onDebugTextOpacity = (): void => this.update('debugTextOpacity');
+  private readonly onDebugTextSize = (): void => this.update('debugTextSize');
   private readonly onMinimapSize = (): void => this.update('minimapSize');
   private readonly onMinimapPosition = (): void => {
     const position = this.positionSelect.value as MinimapPosition;
@@ -96,6 +117,32 @@ export class SettingsScreen {
     saveGameSettings(this.values);
     this.onChange({ ...this.values });
   };
+  private readonly onDebugVisible = (): void => this.updateDebugSettings();
+  private readonly onDebugFieldChange = (): void => this.updateDebugSettings();
+  private updateDebugSettings(): void {
+    this.values.debugInfoVisible = this.debugVisible.checked;
+    const fields: DebugInfoField[] = [];
+    for (const field of DEBUG_INFO_FIELDS) {
+      if (this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`)?.checked) fields.push(field);
+    }
+    this.values.debugInfoFields = fields;
+    saveGameSettings(this.values);
+    this.onChange({ ...this.values });
+  }
+  private buildDebugFieldOptions(): void {
+    for (const field of DEBUG_INFO_FIELDS) {
+      const label = document.createElement('label');
+      label.className = 'debug-field-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = field;
+      checkbox.addEventListener('change', this.onDebugFieldChange);
+      const text = document.createElement('span');
+      text.textContent = ({ fps: 'FPS', map: 'Map name', seed: 'Seed', position: 'Player position', angle: 'Player angle', rooms: 'Room count', entities: 'Entity count', world: 'Discovered maps', validation: 'Map validation' } satisfies Record<DebugInfoField, string>)[field];
+      label.append(checkbox, text);
+      this.debugFieldOptions.append(label);
+    }
+  }
 
   private update(key: SliderSetting): void {
     const range = GAME_SETTING_RANGES[key];
@@ -108,6 +155,11 @@ export class SettingsScreen {
 
   private syncControls(): void {
     this.positionSelect.value = this.values.minimapPosition;
+    this.debugVisible.checked = this.values.debugInfoVisible;
+    for (const field of DEBUG_INFO_FIELDS) {
+      const checkbox = this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`);
+      if (checkbox) checkbox.checked = this.values.debugInfoFields.includes(field);
+    }
     for (const key of Object.keys(controls) as SliderSetting[]) {
       this.sliders[key].value = String(this.values[key]);
       this.outputs[key].value = key === 'mouseSensitivity'
@@ -116,7 +168,11 @@ export class SettingsScreen {
           ? `${Math.round(this.values[key] * 100)}%`
           : key === 'minimapSize'
             ? `${Math.round(this.values[key])} px`
-            : this.values[key].toFixed(controls[key].digits);
+          : key === 'debugTextOpacity'
+            ? `${Math.round(this.values[key] * 100)}%`
+            : key === 'debugTextSize'
+              ? `${Math.round(this.values[key])} px`
+              : this.values[key].toFixed(controls[key].digits);
     }
   }
 }

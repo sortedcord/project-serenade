@@ -12,7 +12,13 @@ describe('player settings', () => {
   it('uses defaults, applies edits immediately, and restores persisted values', () => {
     const storage = new MemoryStorage();
     expect(loadGameSettings(storage)).toEqual(DEFAULT_GAME_SETTINGS);
-    const changed: GameSettings = { movementSpeed: 4.5, bobFrequency: 0, mouseSensitivity: 0.0041, ambientOcclusion: 0.85, minimapSize: 224, minimapPosition: 'bottom-right' };
+    const changed: GameSettings = {
+      ...DEFAULT_GAME_SETTINGS,
+      movementSpeed: 4.5, bobFrequency: 0, mouseSensitivity: 0.0041, ambientOcclusion: 0.85,
+      minimapSize: 224, minimapPosition: 'bottom-right',
+      debugInfoVisible: true, debugTextOpacity: 0.55, debugTextSize: 16,
+      debugInfoFields: ['fps', 'position', 'validation'],
+    };
     configurePlayerSettings(changed);
     saveGameSettings(changed, storage);
     expect(PLAYER_CONFIG.movementSpeed).toBe(4.5);
@@ -22,9 +28,12 @@ describe('player settings', () => {
   });
 
   it('bounds malformed or out-of-range stored settings to supported slider ranges', () => {
-    expect(clampGameSettings({ movementSpeed: 90, bobFrequency: -2, mouseSensitivity: Number.NaN, ambientOcclusion: 2 })).toEqual({
-      movementSpeed: 6, bobFrequency: 0, mouseSensitivity: DEFAULT_GAME_SETTINGS.mouseSensitivity, ambientOcclusion: 1,
-      minimapSize: DEFAULT_GAME_SETTINGS.minimapSize, minimapPosition: DEFAULT_GAME_SETTINGS.minimapPosition,
+    expect(clampGameSettings({
+      movementSpeed: 90, bobFrequency: -2, mouseSensitivity: Number.NaN, ambientOcclusion: 2,
+      debugInfoVisible: false, debugTextOpacity: -1, debugTextSize: 40, debugInfoFields: ['fps', 'invalid'] as GameSettings['debugInfoFields'],
+    })).toEqual({
+      ...DEFAULT_GAME_SETTINGS, movementSpeed: 6, bobFrequency: 0, ambientOcclusion: 1,
+      debugInfoVisible: false, debugTextOpacity: 0.1, debugTextSize: 22, debugInfoFields: ['fps'],
     });
     const storage = new MemoryStorage();
     storage.setItem('below-the-signal.settings', '{broken');

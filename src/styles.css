@@ -43,5 +43,16 @@ body { overflow: hidden; }
 .setting-control select { width: 155px; padding: 7px 5px; border: 1px solid #596e5c; background: #17201b; color: #d9dfd2; font: 11px "Courier New", monospace; }
 .settings-footer { margin-top: 14px; padding-top: 17px; border-top: 1px solid #344137; color: #788679; font-size: 10px; }
 .settings-footer button { padding: 8px 19px; border: 1px solid #9cae7b; background: #293526; color: #e1e7d2; font: 12px "Courier New", monospace; cursor: pointer; }
+#debug-info { position: absolute; top: 12px; right: 14px; z-index: 2; display: grid; gap: 4px; max-width: min(360px, 45vw); padding: 9px 12px; border: 1px solid #70806c; background: #07100ddd; color: #d8e4cf; font-family: "Courier New", monospace; font-variant-numeric: tabular-nums; pointer-events: none; text-align: right; text-shadow: 0 1px #000; }
+#debug-info[hidden] { display: none; }
+.debug-settings { min-width: 0; margin: 20px 0 7px; padding: 14px 14px 10px; border: 1px solid #344137; }
+.debug-settings legend { padding: 0 7px; color: #b8c9a1; font-size: 11px; }
+.debug-visible-row, .debug-field-option { display: flex; align-items: center; gap: 9px; color: #c3cebe; font-size: 11px; cursor: pointer; }
+.debug-visible-row { margin: 5px 0 8px; }
+.debug-visible-row input, .debug-field-option input { accent-color: #b3c48a; }
+.debug-field-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; padding: 7px 0 5px; }
+.debug-field-options > .setting-name { grid-column: 1 / -1; }
+.debug-field-option { font-size: 10px; }
+.debug-field-option input { margin: 0; }
 #settings-panel button:focus-visible, #settings-panel input:focus-visible, #settings-panel select:focus-visible { outline: 2px solid #c5d3a7; outline-offset: 3px; }
 @media (max-width: 520px) { #settings-panel { padding: 20px 17px 16px; } .setting-row { gap: 10px; } .setting-description { max-width: 175px; line-height: 1.4; } .setting-control, .setting-control input { min-width: 112px; width: 112px; } }
