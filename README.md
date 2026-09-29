@@ -25,6 +25,7 @@ Open the Vite URL, then click the view to capture the mouse. Pointer lock is opt
 - **Escape** pauses and releases mouse capture; press it again to resume. Losing browser focus also pauses. Resume does not require pointer lock; click the view to capture the mouse again.
 - In the pause menu, **W/S** or **↑/↓** select **Resume** or **Settings**; **Enter** activates the selection.
 - Open **Settings** from the pause menu to adjust walking speed, bobbing rate, mouse look sensitivity, ambient occlusion, minimap size (96–256 pixels), and minimap screen corner. Changes apply immediately and save in this browser; 0% disables occlusion shading. **Done** or **Escape** returns to the pause menu.
+- **Frame rate limit** in Settings: 1–119 FPS, or move the slider fully right for **Unlimited**. Changes take effect immediately and persist on this device.
 
 An exit is the gold marker on the map; walk into it to travel to another cached submap. Returning through its reciprocal connection restores the original map.
 

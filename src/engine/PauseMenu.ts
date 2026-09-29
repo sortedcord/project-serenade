@@ -49,6 +49,15 @@ export class PauseMenu {
     this.paused = false;
     this.onPauseChange(false);
     this.canvas.focus();
+    try {
+      void Promise.resolve(this.canvas.requestPointerLock()).catch(() => this.onPointerLockRequestFailure());
+    } catch {
+      this.onPointerLockRequestFailure();
+    }
+  };
+
+  private readonly onPointerLockRequestFailure = (): void => {
+    this.canvas.dispatchEvent(new Event('pointerlockerror'));
   };
 
   private readonly openSettings = (): void => {

@@ -8,7 +8,9 @@ const controls = {
   minimapSize: { input: '#setting-minimap-size', output: '#setting-minimap-size-value', digits: 0 },
   debugTextOpacity: { input: '#setting-debug-opacity', output: '#setting-debug-opacity-value', digits: 0 },
   debugTextSize: { input: '#setting-debug-size', output: '#setting-debug-size-value', digits: 0 },
+  maxFps: { input: '#setting-max-fps', output: '#setting-max-fps-value', digits: 0 },
 } as const;
+const FPS_RANGE_MAX = 120;
 
 type SliderSetting = keyof typeof controls;
 /** Owns the accessible in-game settings dialog and persists its live slider edits. */
@@ -37,6 +39,7 @@ export class SettingsScreen {
       minimapSize: requireElement<HTMLInputElement>(controls.minimapSize.input),
       debugTextOpacity: requireElement<HTMLInputElement>(controls.debugTextOpacity.input),
       debugTextSize: requireElement<HTMLInputElement>(controls.debugTextSize.input),
+      maxFps: requireElement<HTMLInputElement>(controls.maxFps.input),
     };
     this.outputs = {
       movementSpeed: requireElement<HTMLOutputElement>(controls.movementSpeed.output),
@@ -46,6 +49,7 @@ export class SettingsScreen {
       ambientOcclusion: requireElement<HTMLOutputElement>(controls.ambientOcclusion.output),
       debugTextOpacity: requireElement<HTMLOutputElement>(controls.debugTextOpacity.output),
       debugTextSize: requireElement<HTMLOutputElement>(controls.debugTextSize.output),
+      maxFps: requireElement<HTMLOutputElement>(controls.maxFps.output),
     };
     this.debugVisible = requireElement<HTMLInputElement>('#setting-debug-visible');
     this.debugFieldOptions = requireElement<HTMLElement>('#debug-field-options');
@@ -65,6 +69,7 @@ export class SettingsScreen {
     this.sliders.minimapSize.addEventListener('input', this.onMinimapSize);
     this.positionSelect.addEventListener('change', this.onMinimapPosition);
     this.sliders.debugTextOpacity.addEventListener('input', this.onDebugTextOpacity);
+    this.sliders.maxFps.addEventListener('input', this.onMaxFps);
     this.sliders.debugTextSize.addEventListener('input', this.onDebugTextSize);
     this.debugVisible.addEventListener('change', this.onDebugVisible);
     for (const field of DEBUG_INFO_FIELDS) this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`)?.addEventListener('change', this.onDebugFieldChange);
@@ -84,6 +89,7 @@ export class SettingsScreen {
     this.positionSelect.removeEventListener('change', this.onMinimapPosition);
     this.sliders.debugTextOpacity.removeEventListener('input', this.onDebugTextOpacity);
     this.sliders.debugTextSize.removeEventListener('input', this.onDebugTextSize);
+    this.sliders.maxFps.removeEventListener('input', this.onMaxFps);
     this.debugVisible.removeEventListener('change', this.onDebugVisible);
     for (const field of DEBUG_INFO_FIELDS) this.debugFieldOptions.querySelector<HTMLInputElement>(`input[value="${field}"]`)?.removeEventListener('change', this.onDebugFieldChange);
   }
@@ -109,6 +115,7 @@ export class SettingsScreen {
   private readonly onAmbientOcclusion = (): void => this.update('ambientOcclusion');
   private readonly onDebugTextOpacity = (): void => this.update('debugTextOpacity');
   private readonly onDebugTextSize = (): void => this.update('debugTextSize');
+  private readonly onMaxFps = (): void => this.update('maxFps');
   private readonly onMinimapSize = (): void => this.update('minimapSize');
   private readonly onMinimapPosition = (): void => {
     const position = this.positionSelect.value as MinimapPosition;
@@ -146,7 +153,10 @@ export class SettingsScreen {
 
   private update(key: SliderSetting): void {
     const range = GAME_SETTING_RANGES[key];
-    const value = Math.max(range.min, Math.min(range.max, Number(this.sliders[key].value)));
+    const requestedValue = Number(this.sliders[key].value);
+    const value = key === 'maxFps' && requestedValue === FPS_RANGE_MAX
+      ? 0
+      : Math.max(range.min, Math.min(range.max, requestedValue));
     this.values[key] = value;
     this.syncControls();
     saveGameSettings(this.values);
@@ -161,18 +171,20 @@ export class SettingsScreen {
       if (checkbox) checkbox.checked = this.values.debugInfoFields.includes(field);
     }
     for (const key of Object.keys(controls) as SliderSetting[]) {
-      this.sliders[key].value = String(this.values[key]);
+      this.sliders[key].value = String(key === 'maxFps' && this.values[key] === 0 ? FPS_RANGE_MAX : this.values[key]);
       this.outputs[key].value = key === 'mouseSensitivity'
         ? `${(this.values[key] * 1000).toFixed(1)} px`
         : key === 'ambientOcclusion'
           ? `${Math.round(this.values[key] * 100)}%`
           : key === 'minimapSize'
             ? `${Math.round(this.values[key])} px`
-          : key === 'debugTextOpacity'
-            ? `${Math.round(this.values[key] * 100)}%`
-            : key === 'debugTextSize'
-              ? `${Math.round(this.values[key])} px`
-              : this.values[key].toFixed(controls[key].digits);
+            : key === 'debugTextOpacity'
+              ? `${Math.round(this.values[key] * 100)}%`
+              : key === 'debugTextSize'
+                ? `${Math.round(this.values[key])} px`
+                : key === 'maxFps'
+                  ? (this.values[key] === 0 ? 'Unlimited' : `${Math.round(this.values[key])} FPS`)
+                  : this.values[key].toFixed(controls[key].digits);
     }
   }
 }

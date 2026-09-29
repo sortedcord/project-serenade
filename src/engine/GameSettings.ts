@@ -14,6 +14,7 @@ export interface GameSettings {
   debugTextOpacity: number;
   debugTextSize: number;
   debugInfoFields: DebugInfoField[];
+  maxFps: number;
 }
 
 export const DEFAULT_GAME_SETTINGS: Readonly<GameSettings> = {
@@ -27,6 +28,7 @@ export const DEFAULT_GAME_SETTINGS: Readonly<GameSettings> = {
   debugTextOpacity: 0.82,
   debugTextSize: 12,
   debugInfoFields: [...DEBUG_INFO_FIELDS],
+  maxFps: 0,
 };
 
 export const GAME_SETTING_RANGES = {
@@ -37,8 +39,8 @@ export const GAME_SETTING_RANGES = {
   minimapSize: { min: 96, max: 256, step: 8 },
   debugTextOpacity: { min: 0.1, max: 1, step: 0.05 },
   debugTextSize: { min: 8, max: 22, step: 1 },
+  maxFps: { min: 1, max: 120, step: 1 },
 } as const;
-
 const STORAGE_KEY = 'below-the-signal.settings';
 
 export function clampGameSettings(value: Partial<GameSettings>): GameSettings {
@@ -55,6 +57,7 @@ export function clampGameSettings(value: Partial<GameSettings>): GameSettings {
     debugInfoFields: Array.isArray(value.debugInfoFields)
       ? DEBUG_INFO_FIELDS.filter(field => value.debugInfoFields!.includes(field))
       : [...DEFAULT_GAME_SETTINGS.debugInfoFields],
+    maxFps: value.maxFps === 0 ? 0 : clamp(value.maxFps, GAME_SETTING_RANGES.maxFps.min, GAME_SETTING_RANGES.maxFps.max, DEFAULT_GAME_SETTINGS.maxFps),
   };
 }
 

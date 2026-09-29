@@ -12,6 +12,7 @@ import { MinimapRenderer } from './MinimapRenderer';
 import { SettingsScreen } from './SettingsScreen';
 import { PauseMenu } from './PauseMenu';
 import { DebugInfoPanel } from './DebugInfoPanel';
+import { FrameRateLimiter } from './FrameRateLimiter';
 import { nearestInteractable } from './SpriteAssets';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
@@ -25,6 +26,7 @@ export class Game {
   private readonly input: Input;
   private frameHandle = 0;
   private previousTime = 0;
+  private readonly frameRateLimiter = new FrameRateLimiter(0);
   private fps = 0;
   private fpsFrames = 0;
   private fpsElapsed = 0;
@@ -36,6 +38,7 @@ export class Game {
   private readonly canvas: HTMLCanvasElement;
   private readonly captureMessage: HTMLElement;
   private readonly prompt: HTMLElement;
+  private pointerLockPending = false;
 
   constructor(canvas: HTMLCanvasElement, captureMessage: HTMLElement, prompt: HTMLElement, seed: string) {
     this.canvas = canvas;
@@ -52,15 +55,19 @@ export class Game {
     this.settingsScreen = new SettingsScreen((settings: GameSettings) => {
       configurePlayerSettings(settings);
       this.renderer.ambientOcclusion = settings.ambientOcclusion;
-      this.minimap.configure(settings.minimapPosition, settings.minimapSize);
+      this.frameRateLimiter.setLimit(settings.maxFps);
+      this.frameRateLimiter.reset();
       this.debugInfo.configure(settings);
     }, () => this.pauseMenu.show());
     this.pauseMenu = new PauseMenu(canvas, this.settingsScreen, paused => {
       this.input.setSuspended(paused);
-      this.captureMessage.classList.toggle('hidden', paused || document.pointerLockElement === this.canvas);
+      this.pointerLockPending = !paused;
+      this.captureMessage.classList.add('hidden');
       if (paused) this.prompt.textContent = '';
+      this.frameRateLimiter.reset();
     });
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.addEventListener('pointerlockerror', this.onPointerLockError);
     window.addEventListener('keydown', this.onDebugKey);
   }
 
@@ -73,9 +80,16 @@ export class Game {
     this.settingsScreen.destroy();
     window.removeEventListener('keydown', this.onDebugKey);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
+    document.removeEventListener('pointerlockerror', this.onPointerLockError);
   }
   private readonly onPointerLockChange = (): void => {
-    this.captureMessage.classList.toggle('hidden', this.pauseMenu.paused || document.pointerLockElement === this.canvas);
+    const locked = document.pointerLockElement === this.canvas;
+    if (locked) this.pointerLockPending = false;
+    this.captureMessage.classList.toggle('hidden', this.pauseMenu.paused || locked || this.pointerLockPending);
+  };
+  private readonly onPointerLockError = (): void => {
+    this.pointerLockPending = false;
+    if (!this.pauseMenu.paused && document.pointerLockElement !== this.canvas) this.captureMessage.classList.remove('hidden');
   };
 
   private readonly onDebugKey = (event: KeyboardEvent): void => {
@@ -86,7 +100,12 @@ export class Game {
 
   private readonly frame = (time: number): void => {
     if (this.destroyed) return;
-    const dt = Math.min(.08, Math.max(0, (time - this.previousTime) / 1000)); this.previousTime = time;
+    if (!this.frameRateLimiter.shouldRender(time)) {
+      this.frameHandle = requestAnimationFrame(this.frame);
+      return;
+    }
+    const dt = Math.min(.08, Math.max(0, (time - this.previousTime) / 1000));
+    this.previousTime = time;
     if (this.pauseMenu.paused) {
       this.renderer.render(this.world.currentMap, this.player);
       this.minimap.draw(this.world.currentMap, this.player);
@@ -115,7 +134,8 @@ export class Game {
   private drawOverlays(): void {
     const context = this.renderer.context, map = this.world.currentMap;
     context.fillStyle = '#e0dfc7'; context.font = '7px monospace';
-    context.fillText(map.metadata.title ?? map.id, 5, this.renderer.height - 6);
+    const locationName = document.querySelector<HTMLElement>('#location-name');
+    if (locationName) locationName.textContent = map.metadata.title ?? map.id;
     if (this.showMap) this.debugMap.draw(context, map, { x: this.player.positionX, y: this.player.positionY, angle: Math.atan2(this.player.directionY, this.player.directionX) }, 8, 22, 150);
     const errors = validateMap(map);
     this.debugInfo.draw(map, this.player, this.world.state.discoveredMapIds.length, errors);
