@@ -21,6 +21,7 @@ export class Raycaster {
   readonly wallEnds: Int16Array;
   readonly hitTileX: Int16Array;
   readonly hitTileY: Int16Array;
+  visibleCells = new Uint8Array(0);
 
   constructor(readonly width: number, readonly height: number) {
     this.depthBuffer = new Float64Array(width);
@@ -36,6 +37,10 @@ export class Raycaster {
 
   cast(map: GameMap, player: Player): void {
     const centerY = cameraHorizon(player, this.height);
+    if (this.visibleCells.length !== map.width * map.height) this.visibleCells = new Uint8Array(map.width * map.height);
+    this.visibleCells.fill(0);
+    const playerTileX = Math.floor(player.positionX), playerTileY = Math.floor(player.positionY);
+    if (playerTileX >= 0 && playerTileY >= 0 && playerTileX < map.width && playerTileY < map.height) this.visibleCells[playerTileY * map.width + playerTileX] = 1;
     for (let x = 0; x < this.width; x += 1) {
       const cameraX = 2 * x / this.width - 1;
       const rayX = player.directionX + player.planeX * cameraX;
@@ -67,6 +72,7 @@ export class Raycaster {
           break;
         }
         tile = map.tiles[mapY][mapX];
+        this.visibleCells[mapY * map.width + mapX] = 1;
         if (tile !== 0) break;
       }
       let distance = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY;

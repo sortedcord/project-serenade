@@ -24,13 +24,13 @@ Open the Vite URL to start at the pause menu. Press **Enter** on **Resume** (or 
 - **R** generate a fresh seeded world
 - **Escape** pauses and releases mouse capture; press it again to capture the mouse and resume. Losing browser focus also pauses. Gameplay resumes only after mouse capture succeeds; no separate click on the view is needed.
 - In the pause menu, **W/S** or **↑/↓** select **Resume** or **Settings**; **Enter** activates the selection.
-- Open **Settings** from the pause menu to adjust walking speed, bobbing rate, mouse look sensitivity, ambient occlusion, minimap size (96–256 pixels), and minimap screen corner. Changes apply immediately and save in this browser; 0% disables occlusion shading. **Done** or **Escape** returns to the pause menu.
+- Open **Settings** from the pause menu to adjust walking speed, bobbing rate, mouse look sensitivity, ambient occlusion, minimap size (96–256 pixels), minimap range (8–40 tiles), and minimap screen corner. Changes apply immediately and save in this browser; 0% disables occlusion shading. **Done** or **Escape** returns to the pause menu.
 - **Frame rate limit** in Settings: 1–119 FPS, or move the slider fully right for **Unlimited**. Changes take effect immediately and persist on this device.
 
 An exit is the gold marker on the map; walk into it to travel to another cached submap. Returning through its reciprocal connection restores the original map.
 
 The top-right debug panel shows FPS and configurable map, seed, player, room/entity, world, and validation details. Settings let you toggle the panel and each information row, then adjust text opacity (10–100%) and size (8–22 px); all selections save in this browser.
-The soft-edged minimap is a heading-up 2D footprint of the current camera view, using the scene's exact ray hits. It fits visible walls (including distant blocks) instead of cropping to a fixed radius, rotates with your view, and only shows props/exits in front of unblocked rays. Its size and corner remain configurable. **M** remains the separate full-map debugger.
+The frameless north-up minimap draws floating wall outlines, faint floor patches, a player arrow, and an occluded view cone directly over gameplay. There is no background plate, border, or circular mask. Seen geometry stays remembered per cached map; current sight is brighter, explored areas dimmer, and unexplored geometry hidden. Features fade individually with world distance. Size controls the HUD footprint; range controls stable zoom and does not change automatically when turning. **M** remains the separate full-map debugger.
 
 ## Structure
 

@@ -52,7 +52,7 @@ export class Game {
       this.renderer.ambientOcclusion = settings.ambientOcclusion;
       this.frameRateLimiter.setLimit(settings.maxFps);
       this.frameRateLimiter.reset();
-      this.minimap.configure(settings.minimapPosition, settings.minimapSize);
+      this.minimap.configure(settings.minimapPosition, settings.minimapSize, settings.minimapRange);
       this.debugInfo.configure(settings);
     }, () => this.pauseMenu.show());
     this.pauseMenu = new PauseMenu(canvas, this.settingsScreen, paused => {

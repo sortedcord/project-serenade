@@ -12,7 +12,7 @@
         <div id="crosshair">+</div>
         <div id="location-name" aria-live="polite"></div>
         <div id="prompt"></div>
-        <canvas id="minimap" width="160" height="160" aria-label="Camera view from above: forward up, visible walls, gold exits, amber props" data-position="top-left"></canvas>
+        <canvas id="minimap" width="192" height="192" aria-label="Frameless explored map: north up, bright visible walls, dim explored walls, gold exits" data-position="top-left"></canvas>
         <div id="debug-info" aria-label="Performance and debug information" aria-live="off" hidden></div>
       </section>
       <div id="error" role="alert"></div>
@@ -53,8 +53,12 @@
             <span class="setting-control"><output id="setting-ao-value" for="setting-ao"></output><input id="setting-ao" type="range" min="0" max="1" step="0.05" /></span>
           </label>
           <label class="setting-row" for="setting-minimap-size">
-            <span class="setting-copy"><span class="setting-name">Minimap size</span><span class="setting-description">On-screen size of the camera-view map</span></span>
+            <span class="setting-copy"><span class="setting-name">Minimap size</span><span class="setting-description">On-screen map size, independent of zoom</span></span>
             <span class="setting-control"><output id="setting-minimap-size-value" for="setting-minimap-size"></output><input id="setting-minimap-size" type="range" min="96" max="256" step="8" /></span>
+          </label>
+          <label class="setting-row" for="setting-minimap-range">
+            <span class="setting-copy"><span class="setting-name">Minimap range</span><span class="setting-description">Tiles shown around you · lower is closer</span></span>
+            <span class="setting-control"><output id="setting-minimap-range-value" for="setting-minimap-range"></output><input id="setting-minimap-range" type="range" min="8" max="40" step="1" /></span>
           </label>
           <label class="setting-row" for="setting-minimap-position">
             <span class="setting-copy"><span class="setting-name">Minimap position</span><span class="setting-description">Choose a screen corner</span></span>

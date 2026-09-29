@@ -6,6 +6,7 @@ const controls = {
   mouseSensitivity: { input: '#setting-mouse', output: '#setting-mouse-value', digits: 4 },
   ambientOcclusion: { input: '#setting-ao', output: '#setting-ao-value', digits: 0 },
   minimapSize: { input: '#setting-minimap-size', output: '#setting-minimap-size-value', digits: 0 },
+  minimapRange: { input: '#setting-minimap-range', output: '#setting-minimap-range-value', digits: 0 },
   debugTextOpacity: { input: '#setting-debug-opacity', output: '#setting-debug-opacity-value', digits: 0 },
   debugTextSize: { input: '#setting-debug-size', output: '#setting-debug-size-value', digits: 0 },
   maxFps: { input: '#setting-max-fps', output: '#setting-max-fps-value', digits: 0 },
@@ -37,6 +38,7 @@ export class SettingsScreen {
       mouseSensitivity: requireElement<HTMLInputElement>(controls.mouseSensitivity.input),
       ambientOcclusion: requireElement<HTMLInputElement>(controls.ambientOcclusion.input),
       minimapSize: requireElement<HTMLInputElement>(controls.minimapSize.input),
+      minimapRange: requireElement<HTMLInputElement>(controls.minimapRange.input),
       debugTextOpacity: requireElement<HTMLInputElement>(controls.debugTextOpacity.input),
       debugTextSize: requireElement<HTMLInputElement>(controls.debugTextSize.input),
       maxFps: requireElement<HTMLInputElement>(controls.maxFps.input),
@@ -46,6 +48,7 @@ export class SettingsScreen {
       bobFrequency: requireElement<HTMLOutputElement>(controls.bobFrequency.output),
       mouseSensitivity: requireElement<HTMLOutputElement>(controls.mouseSensitivity.output),
       minimapSize: requireElement<HTMLOutputElement>(controls.minimapSize.output),
+      minimapRange: requireElement<HTMLOutputElement>(controls.minimapRange.output),
       ambientOcclusion: requireElement<HTMLOutputElement>(controls.ambientOcclusion.output),
       debugTextOpacity: requireElement<HTMLOutputElement>(controls.debugTextOpacity.output),
       debugTextSize: requireElement<HTMLOutputElement>(controls.debugTextSize.output),
@@ -67,6 +70,7 @@ export class SettingsScreen {
     this.sliders.mouseSensitivity.addEventListener('input', this.onMouseSensitivity);
     this.sliders.ambientOcclusion.addEventListener('input', this.onAmbientOcclusion);
     this.sliders.minimapSize.addEventListener('input', this.onMinimapSize);
+    this.sliders.minimapRange.addEventListener('input', this.onMinimapRange);
     this.positionSelect.addEventListener('change', this.onMinimapPosition);
     this.sliders.debugTextOpacity.addEventListener('input', this.onDebugTextOpacity);
     this.sliders.maxFps.addEventListener('input', this.onMaxFps);
@@ -86,6 +90,7 @@ export class SettingsScreen {
     this.sliders.mouseSensitivity.removeEventListener('input', this.onMouseSensitivity);
     this.sliders.ambientOcclusion.removeEventListener('input', this.onAmbientOcclusion);
     this.sliders.minimapSize.removeEventListener('input', this.onMinimapSize);
+    this.sliders.minimapRange.removeEventListener('input', this.onMinimapRange);
     this.positionSelect.removeEventListener('change', this.onMinimapPosition);
     this.sliders.debugTextOpacity.removeEventListener('input', this.onDebugTextOpacity);
     this.sliders.debugTextSize.removeEventListener('input', this.onDebugTextSize);
@@ -117,6 +122,7 @@ export class SettingsScreen {
   private readonly onDebugTextSize = (): void => this.update('debugTextSize');
   private readonly onMaxFps = (): void => this.update('maxFps');
   private readonly onMinimapSize = (): void => this.update('minimapSize');
+  private readonly onMinimapRange = (): void => this.update('minimapRange');
   private readonly onMinimapPosition = (): void => {
     const position = this.positionSelect.value as MinimapPosition;
     if (!MINIMAP_POSITIONS.includes(position)) return;
@@ -184,6 +190,8 @@ export class SettingsScreen {
                 ? `${Math.round(this.values[key])} px`
                 : key === 'maxFps'
                   ? (this.values[key] === 0 ? 'Unlimited' : `${Math.round(this.values[key])} FPS`)
+                : key === 'minimapRange'
+                  ? `${Math.round(this.values[key])} tiles`
                   : this.values[key].toFixed(controls[key].digits);
     }
   }

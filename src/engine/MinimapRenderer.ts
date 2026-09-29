@@ -2,105 +2,130 @@ import type { GameMap } from '../world/GameMap';
 import type { Player } from './Player';
 import type { Raycaster } from './Raycaster';
 import type { MinimapPosition } from './GameSettings';
+import { MinimapDiscovery } from './MinimapDiscovery';
 
-/** Heading-up 2D footprint of the scene's actual camera rays, not a fixed map crop. */
+/** Frameless north-up automap: only map features paint pixels, never a HUD plate. */
 export class MinimapRenderer {
   private readonly context: CanvasRenderingContext2D;
-  private readonly resolution = 160;
-  private readonly edgeMask: HTMLCanvasElement;
-  private wallCells = new Uint8Array(0);
+  private readonly resolution = 192;
+  private readonly discovery = new MinimapDiscovery();
+  private readonly coneFade: CanvasGradient;
+  private range = 24;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    canvas.width = this.resolution;
-    canvas.height = this.resolution;
+    canvas.width = canvas.height = this.resolution;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D is unavailable for the minimap.');
     this.context = context;
-    context.imageSmoothingEnabled = false;
-    this.edgeMask = document.createElement('canvas');
-    this.edgeMask.width = this.edgeMask.height = this.resolution;
-    const mask = this.edgeMask.getContext('2d')!;
     const center = this.resolution / 2;
-    const fade = mask.createRadialGradient(center, center, center * .65, center, center, center);
-    fade.addColorStop(0, '#fff');
-    fade.addColorStop(.5, '#ffffffb0');
-    fade.addColorStop(1, '#ffffff00');
-    mask.fillStyle = fade;
-    mask.fillRect(0, 0, this.resolution, this.resolution);
+    this.coneFade = context.createRadialGradient(center, center, 0, center, center, center - 8);
+    this.coneFade.addColorStop(0, '#b3dca820');
+    this.coneFade.addColorStop(.45, '#b3dca812');
+    this.coneFade.addColorStop(1, '#b3dca800');
   }
 
-  configure(position: MinimapPosition, size: number): void {
+  configure(position: MinimapPosition, size: number, range: number): void {
     this.canvas.dataset.position = position;
     this.canvas.style.width = `${size}px`;
     this.canvas.style.height = `${size}px`;
+    this.range = range;
   }
 
   draw(map: GameMap, player: Player, rays: Raycaster): void {
-    const ctx = this.context, size = this.resolution;
-    const centerX = size * .5, playerY = size * .76;
-    const planeLength = Math.hypot(player.planeX, player.planeY);
-    let farthest = 2, widest = 1;
-    // Fit every visible hit, including distant isolated blocks, into the map.
-    for (let column = 0; column < rays.width; column++) {
-      const depth = rays.depthBuffer[column]!;
-      farthest = Math.max(farthest, depth);
-      widest = Math.max(widest, Math.abs((2 * column / rays.width - 1) * planeLength * depth));
-    }
-    const scale = Math.min(size * .55 / (farthest + 1), size * .37 / (widest + 1));
+    const ctx = this.context, size = this.resolution, center = size / 2;
+    // Zoom depends only on the chosen range, never on ray depths or turning.
+    const scale = (center - 8) / (this.range + 1);
+    const explored = this.discovery.update(map, rays.visibleCells);
+    const originX = center - player.positionX * scale;
+    const originY = center - player.positionY * scale;
     ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = '#080e0dde';
-    ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); ctx.fill();
+    const minX = Math.max(0, Math.floor(player.positionX - this.range - 1));
+    const minY = Math.max(0, Math.floor(player.positionY - this.range - 1));
+    const maxX = Math.min(map.width - 1, Math.ceil(player.positionX + this.range + 1));
+    const maxY = Math.min(map.height - 1, Math.ceil(player.positionY + this.range + 1));
 
-    // World coordinates become heading-relative map coordinates: forward is up.
-    ctx.save();
-    ctx.setTransform(-player.directionY * scale, -player.directionX * scale,
-      player.directionX * scale, -player.directionY * scale,
-      centerX + scale * (player.directionY * player.positionX - player.directionX * player.positionY),
-      playerY + scale * (player.directionX * player.positionX + player.directionY * player.positionY));
-    ctx.beginPath(); ctx.moveTo(player.positionX, player.positionY);
+    ctx.fillStyle = '#819b83';
+    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+      const index = y * map.width + x;
+      if (!explored[index] || map.tiles[y]![x] !== 0) continue;
+      const fade = this.featureFade(Math.hypot(x + .5 - player.positionX, y + .5 - player.positionY));
+      ctx.globalAlpha = fade * (rays.visibleCells[index] ? .13 : .045);
+      ctx.fillRect(originX + x * scale, originY + y * scale, scale, scale);
+    }
+    ctx.globalAlpha = 1;
+    // The live viewing cone is clipped by the exact scene hits, with its own
+    // subtle distance fade. It does not determine map scale or erase memory.
+    ctx.beginPath(); ctx.moveTo(center, center);
     for (let column = 0; column < rays.width; column++) {
       const cameraX = 2 * column / rays.width - 1, depth = rays.depthBuffer[column]!;
-      ctx.lineTo(player.positionX + (player.directionX + player.planeX * cameraX) * depth,
-        player.positionY + (player.directionY + player.planeY * cameraX) * depth);
+      ctx.lineTo(center + (player.directionX + player.planeX * cameraX) * depth * scale,
+        center + (player.directionY + player.planeY * cameraX) * depth * scale);
     }
-    ctx.closePath(); ctx.fillStyle = '#344e40'; ctx.fill();
+    ctx.closePath(); ctx.fillStyle = this.coneFade; ctx.fill();
 
-    if (this.wallCells.length !== map.width * map.height) this.wallCells = new Uint8Array(map.width * map.height);
-    this.wallCells.fill(0);
-    ctx.fillStyle = '#87967a'; ctx.strokeStyle = '#b9c8a7'; ctx.lineWidth = .7 / scale;
-    for (let column = 0; column < rays.width; column++) {
-      const x = rays.hitTileX[column]!, y = rays.hitTileY[column]!;
-      if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
+    ctx.lineWidth = 1;
+    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
       const index = y * map.width + x;
-      if (this.wallCells[index]) continue;
-      this.wallCells[index] = 1;
-      ctx.fillRect(x, y, 1, 1); ctx.strokeRect(x, y, 1, 1);
+      if (!explored[index] || map.tiles[y]![x] === 0) continue;
+      const visible = rays.visibleCells[index] !== 0;
+      ctx.strokeStyle = visible ? '#d9dec1' : '#839486';
+      // Draw exposed edges, not internal grid seams in solid wall masses.
+      for (let edge = 0; edge < 4; edge++) {
+        const nx = x + (edge === 1 ? 1 : edge === 3 ? -1 : 0);
+        const ny = y + (edge === 2 ? 1 : edge === 0 ? -1 : 0);
+        if (map.tiles[ny]?.[nx] !== 0) continue;
+        const x1 = x + (edge === 1 ? 1 : 0), y1 = y + (edge === 2 ? 1 : 0);
+        const x2 = x1 + (edge % 2 === 0 ? 1 : 0), y2 = y1 + (edge % 2 === 1 ? 1 : 0);
+        const fade = this.featureFade(Math.hypot((x1 + x2) / 2 - player.positionX, (y1 + y2) / 2 - player.positionY));
+        if (fade <= 0) continue;
+        ctx.globalAlpha = fade * (visible ? .9 : .35);
+        ctx.beginPath(); ctx.moveTo(originX + x1 * scale, originY + y1 * scale);
+        ctx.lineTo(originX + x2 * scale, originY + y2 * scale); ctx.stroke();
+      }
     }
-    // Markers use the same camera-space depth/column test as scene billboards.
-    const determinant = player.planeX * player.directionY - player.directionX * player.planeY;
-    if (Math.abs(determinant) > 1e-8) {
-      ctx.fillStyle = '#c98e65';
-      for (const entity of map.entities) this.drawMarker(entity.x, entity.y, .9, player, rays, determinant, scale);
-      ctx.fillStyle = '#edc971';
-      for (const exit of map.exits) this.drawMarker(exit.x + .5, exit.y + .5, 1.4, player, rays, determinant, scale);
-    }
-    ctx.restore();
 
-    ctx.fillStyle = '#e2edb1'; ctx.beginPath();
-    ctx.moveTo(centerX, playerY - 5); ctx.lineTo(centerX - 3, playerY + 3);
-    ctx.lineTo(centerX + 3, playerY + 3); ctx.closePath(); ctx.fill();
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.drawImage(this.edgeMask, 0, 0);
-    ctx.globalCompositeOperation = 'source-over';
+    const determinant = player.planeX * player.directionY - player.directionX * player.planeY;
+    ctx.fillStyle = '#cfa06b';
+    for (const entity of map.entities) {
+      if (entity.properties?.interactable !== true) continue;
+      if (this.markerVisible(entity.x, entity.y, player, rays, determinant)) this.drawMarker(entity.x, entity.y, 1.5, player, scale, center);
+    }
+    ctx.fillStyle = '#edcc7c';
+    for (const exit of map.exits) {
+      const x = exit.x + .5, y = exit.y + .5;
+      const index = exit.y * map.width + exit.x;
+      if (!explored[index]) continue;
+      this.drawMarker(x, y, 2, player, scale, center);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#edf4d2'; ctx.strokeStyle = '#18251b'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(center + player.directionX * 5, center + player.directionY * 5);
+    ctx.lineTo(center - player.directionX * 3 - player.directionY * 3, center - player.directionY * 3 + player.directionX * 3);
+    ctx.lineTo(center - player.directionX * 3 + player.directionY * 3, center - player.directionY * 3 - player.directionX * 3);
+    ctx.closePath(); ctx.stroke(); ctx.fill();
   }
 
-  private drawMarker(x: number, y: number, radius: number, player: Player, rays: Raycaster, determinant: number, scale: number): void {
+  private featureFade(distance: number): number {
+    // Fade each feature independently; no rectangular/circular clipping mask.
+    const t = Math.min(1, Math.max(0, (distance - this.range * .4) / (this.range * .6)));
+    return 1 - t * t * (3 - 2 * t);
+  }
+
+  private markerVisible(x: number, y: number, player: Player, rays: Raycaster, determinant: number): boolean {
+    if (Math.abs(determinant) < 1e-8) return false;
     const dx = x - player.positionX, dy = y - player.positionY;
     const depth = (-player.planeY * dx + player.planeX * dy) / determinant;
-    if (depth <= .05) return;
+    if (depth <= .05) return false;
     const cameraX = (player.directionY * dx - player.directionX * dy) / determinant;
     const column = Math.floor(rays.width * .5 * (1 + cameraX / depth));
-    if (column < 0 || column >= rays.width || depth >= rays.depthBuffer[column]!) return;
-    this.context.beginPath(); this.context.arc(x, y, radius / scale, 0, Math.PI * 2); this.context.fill();
+    return column >= 0 && column < rays.width && depth < rays.depthBuffer[column]!;
+  }
+
+  private drawMarker(x: number, y: number, radius: number, player: Player, scale: number, center: number): void {
+    const fade = this.featureFade(Math.hypot(x - player.positionX, y - player.positionY));
+    if (fade <= 0) return;
+    this.context.globalAlpha = fade * .9;
+    this.context.beginPath(); this.context.arc(center + (x - player.positionX) * scale, center + (y - player.positionY) * scale, radius, 0, Math.PI * 2); this.context.fill();
   }
 }

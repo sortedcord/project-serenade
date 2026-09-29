@@ -9,6 +9,7 @@ export interface GameSettings {
   mouseSensitivity: number;
   ambientOcclusion: number;
   minimapSize: number;
+  minimapRange: number;
   minimapPosition: MinimapPosition;
   debugInfoVisible: boolean;
   debugTextOpacity: number;
@@ -23,6 +24,7 @@ export const DEFAULT_GAME_SETTINGS: Readonly<GameSettings> = {
   mouseSensitivity: 0.0022,
   ambientOcclusion: 0.6,
   minimapSize: 160,
+  minimapRange: 24,
   minimapPosition: 'top-left',
   debugInfoVisible: true,
   debugTextOpacity: 0.82,
@@ -37,6 +39,7 @@ export const GAME_SETTING_RANGES = {
   mouseSensitivity: { min: 0.0005, max: 0.006, step: 0.0001 },
   ambientOcclusion: { min: 0, max: 1, step: 0.05 },
   minimapSize: { min: 96, max: 256, step: 8 },
+  minimapRange: { min: 8, max: 40, step: 1 },
   debugTextOpacity: { min: 0.1, max: 1, step: 0.05 },
   debugTextSize: { min: 8, max: 22, step: 1 },
   maxFps: { min: 1, max: 120, step: 1 },
@@ -50,6 +53,7 @@ export function clampGameSettings(value: Partial<GameSettings>): GameSettings {
     mouseSensitivity: clamp(value.mouseSensitivity, GAME_SETTING_RANGES.mouseSensitivity.min, GAME_SETTING_RANGES.mouseSensitivity.max, DEFAULT_GAME_SETTINGS.mouseSensitivity),
     ambientOcclusion: clamp(value.ambientOcclusion, GAME_SETTING_RANGES.ambientOcclusion.min, GAME_SETTING_RANGES.ambientOcclusion.max, DEFAULT_GAME_SETTINGS.ambientOcclusion),
     minimapSize: clamp(value.minimapSize, GAME_SETTING_RANGES.minimapSize.min, GAME_SETTING_RANGES.minimapSize.max, DEFAULT_GAME_SETTINGS.minimapSize),
+    minimapRange: clamp(value.minimapRange, GAME_SETTING_RANGES.minimapRange.min, GAME_SETTING_RANGES.minimapRange.max, DEFAULT_GAME_SETTINGS.minimapRange),
     minimapPosition: MINIMAP_POSITIONS.includes(value.minimapPosition as MinimapPosition) ? value.minimapPosition! : DEFAULT_GAME_SETTINGS.minimapPosition,
     debugInfoVisible: typeof value.debugInfoVisible === 'boolean' ? value.debugInfoVisible : DEFAULT_GAME_SETTINGS.debugInfoVisible,
     debugTextOpacity: clamp(value.debugTextOpacity, GAME_SETTING_RANGES.debugTextOpacity.min, GAME_SETTING_RANGES.debugTextOpacity.max, DEFAULT_GAME_SETTINGS.debugTextOpacity),
