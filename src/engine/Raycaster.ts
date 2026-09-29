@@ -19,6 +19,8 @@ export class Raycaster {
   readonly wallStarts: Int16Array;
   readonly cornerOcclusion: Float32Array;
   readonly wallEnds: Int16Array;
+  readonly hitTileX: Int16Array;
+  readonly hitTileY: Int16Array;
 
   constructor(readonly width: number, readonly height: number) {
     this.depthBuffer = new Float64Array(width);
@@ -28,6 +30,8 @@ export class Raycaster {
     this.wallStarts = new Int16Array(width);
     this.wallEnds = new Int16Array(width);
     this.cornerOcclusion = new Float32Array(width);
+    this.hitTileX = new Int16Array(width);
+    this.hitTileY = new Int16Array(width);
   }
 
   cast(map: GameMap, player: Player): void {
@@ -91,6 +95,8 @@ export class Raycaster {
       this.textureCoordinates[x] = textureX;
       this.wallStarts[x] = startY;
       this.wallEnds[x] = endY;
+      this.hitTileX[x] = mapX;
+      this.hitTileY[x] = mapY;
     }
   }
 }

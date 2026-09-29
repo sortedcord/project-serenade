@@ -8,6 +8,8 @@ export class PauseMenu {
   private readonly buttons: HTMLButtonElement[];
   private selected = 0;
   private pointerWasLocked = false;
+  private resumeRequested = false;
+  private readonly captureError: HTMLElement;
   paused = false;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly settings: SettingsScreen, private readonly onPauseChange: (paused: boolean) => void) {
@@ -18,6 +20,9 @@ export class PauseMenu {
     this.shade = shade;
     this.resumeButton = resume;
     this.settingsButton = settingsButton;
+    const captureError = document.querySelector<HTMLElement>('#pause-capture-error');
+    if (!captureError) throw new Error('Game page is missing the pointer capture error message.');
+    this.captureError = captureError;
     this.buttons = [resume, settingsButton];
     resume.addEventListener('click', this.resume);
     settingsButton.addEventListener('click', this.openSettings);
@@ -27,9 +32,11 @@ export class PauseMenu {
     window.addEventListener('blur', this.pause);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.addEventListener('pointerlockerror', this.onPointerLockRequestFailure);
   }
 
   readonly pause = (): void => {
+    this.resumeRequested = false;
     if (this.paused) return;
     this.paused = true;
     this.onPauseChange(true);
@@ -45,19 +52,23 @@ export class PauseMenu {
   };
 
   private readonly resume = (): void => {
-    this.shade.hidden = true;
-    this.paused = false;
-    this.onPauseChange(false);
-    this.canvas.focus();
+    if (this.resumeRequested) return;
+    this.resumeRequested = true;
+    this.captureError.textContent = '';
+    // Called directly by the real click/keyboard gesture. Do not unpause until
+    // pointerlockchange confirms capture, including browsers returning void.
     try {
-      void Promise.resolve(this.canvas.requestPointerLock()).catch(() => this.onPointerLockRequestFailure());
+      const request = this.canvas.requestPointerLock();
+      if (request) void request.catch(this.onPointerLockRequestFailure);
     } catch {
       this.onPointerLockRequestFailure();
     }
   };
 
   private readonly onPointerLockRequestFailure = (): void => {
-    this.canvas.dispatchEvent(new Event('pointerlockerror'));
+    if (!this.resumeRequested) return;
+    this.resumeRequested = false;
+    this.captureError.textContent = 'Mouse capture was refused by the browser. Press Resume to try again.';
   };
 
   private readonly openSettings = (): void => {
@@ -69,7 +80,17 @@ export class PauseMenu {
   private readonly onVisibilityChange = (): void => { if (document.hidden) this.pause(); };
   private readonly onPointerLockChange = (): void => {
     const locked = document.pointerLockElement === this.canvas;
-    if (this.pointerWasLocked && !locked) this.pause();
+    if (locked && this.resumeRequested) {
+      this.resumeRequested = false;
+      this.shade.hidden = true;
+      this.paused = false;
+      this.onPauseChange(false);
+      this.canvas.focus();
+    } else if (locked && this.paused) {
+      document.exitPointerLock();
+    } else if (this.pointerWasLocked && !locked) {
+      this.pause();
+    }
     this.pointerWasLocked = locked;
   };
 
@@ -97,7 +118,10 @@ export class PauseMenu {
       this.updateSelection();
     } else if (key === 'enter' || key === ' ') {
       event.preventDefault();
-      if (!event.repeat) this.buttons[this.selected]!.click();
+      if (!event.repeat) {
+        if (this.selected === 0) this.resume();
+        else this.openSettings();
+      }
     }
   };
 
@@ -125,5 +149,7 @@ export class PauseMenu {
     window.removeEventListener('blur', this.pause);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
+    document.removeEventListener('pointerlockerror', this.onPointerLockRequestFailure);
+    this.resumeRequested = false;
   }
 }

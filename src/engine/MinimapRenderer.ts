@@ -1,20 +1,32 @@
 import type { GameMap } from '../world/GameMap';
 import type { Player } from './Player';
+import type { Raycaster } from './Raycaster';
 import type { MinimapPosition } from './GameSettings';
 
-/** North-up local map, rendered independently from the full-size debug map. */
+/** Heading-up 2D footprint of the scene's actual camera rays, not a fixed map crop. */
 export class MinimapRenderer {
   private readonly context: CanvasRenderingContext2D;
-  private readonly resolution = 96;
-  private readonly tileScale = 6;
+  private readonly resolution = 160;
+  private readonly edgeMask: HTMLCanvasElement;
+  private wallCells = new Uint8Array(0);
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     canvas.width = this.resolution;
     canvas.height = this.resolution;
-    const context = canvas.getContext('2d', { alpha: false });
+    const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D is unavailable for the minimap.');
     this.context = context;
     context.imageSmoothingEnabled = false;
+    this.edgeMask = document.createElement('canvas');
+    this.edgeMask.width = this.edgeMask.height = this.resolution;
+    const mask = this.edgeMask.getContext('2d')!;
+    const center = this.resolution / 2;
+    const fade = mask.createRadialGradient(center, center, center * .65, center, center, center);
+    fade.addColorStop(0, '#fff');
+    fade.addColorStop(.5, '#ffffffb0');
+    fade.addColorStop(1, '#ffffff00');
+    mask.fillStyle = fade;
+    mask.fillRect(0, 0, this.resolution, this.resolution);
   }
 
   configure(position: MinimapPosition, size: number): void {
@@ -23,43 +35,72 @@ export class MinimapRenderer {
     this.canvas.style.height = `${size}px`;
   }
 
-  draw(map: GameMap, player: Player): void {
-    const ctx = this.context, scale = this.tileScale, center = this.resolution / 2;
-    const originX = center - player.positionX * scale;
-    const originY = center - player.positionY * scale;
-    ctx.fillStyle = '#080e0d';
-    ctx.fillRect(0, 0, this.resolution, this.resolution);
-    const radius = center / scale;
-    const minX = Math.max(0, Math.floor(player.positionX - radius));
-    const minY = Math.max(0, Math.floor(player.positionY - radius));
-    const maxX = Math.min(map.width - 1, Math.ceil(player.positionX + radius));
-    const maxY = Math.min(map.height - 1, Math.ceil(player.positionY + radius));
-    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
-      ctx.fillStyle = map.tiles[y]![x] === 0 ? '#34463b' : '#738273';
-      ctx.fillRect(Math.floor(originX + x * scale), Math.floor(originY + y * scale), scale, scale);
+  draw(map: GameMap, player: Player, rays: Raycaster): void {
+    const ctx = this.context, size = this.resolution;
+    const centerX = size * .5, playerY = size * .76;
+    const planeLength = Math.hypot(player.planeX, player.planeY);
+    let farthest = 2, widest = 1;
+    // Fit every visible hit, including distant isolated blocks, into the map.
+    for (let column = 0; column < rays.width; column++) {
+      const depth = rays.depthBuffer[column]!;
+      farthest = Math.max(farthest, depth);
+      widest = Math.max(widest, Math.abs((2 * column / rays.width - 1) * planeLength * depth));
     }
-    ctx.fillStyle = '#b77c56';
-    for (const entity of map.entities) {
-      const x = originX + entity.x * scale, y = originY + entity.y * scale;
-      if (x >= 0 && y >= 0 && x < this.resolution && y < this.resolution) ctx.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 2, 2);
+    const scale = Math.min(size * .55 / (farthest + 1), size * .37 / (widest + 1));
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#080e0dde';
+    ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); ctx.fill();
+
+    // World coordinates become heading-relative map coordinates: forward is up.
+    ctx.save();
+    ctx.setTransform(-player.directionY * scale, -player.directionX * scale,
+      player.directionX * scale, -player.directionY * scale,
+      centerX + scale * (player.directionY * player.positionX - player.directionX * player.positionY),
+      playerY + scale * (player.directionX * player.positionX + player.directionY * player.positionY));
+    ctx.beginPath(); ctx.moveTo(player.positionX, player.positionY);
+    for (let column = 0; column < rays.width; column++) {
+      const cameraX = 2 * column / rays.width - 1, depth = rays.depthBuffer[column]!;
+      ctx.lineTo(player.positionX + (player.directionX + player.planeX * cameraX) * depth,
+        player.positionY + (player.directionY + player.planeY * cameraX) * depth);
     }
-    ctx.fillStyle = '#e6bd69';
-    for (const exit of map.exits) {
-      const x = originX + (exit.x + .5) * scale, y = originY + (exit.y + .5) * scale;
-      if (x >= 0 && y >= 0 && x < this.resolution && y < this.resolution) ctx.fillRect(Math.floor(x) - 2, Math.floor(y) - 2, 4, 4);
+    ctx.closePath(); ctx.fillStyle = '#344e40'; ctx.fill();
+
+    if (this.wallCells.length !== map.width * map.height) this.wallCells = new Uint8Array(map.width * map.height);
+    this.wallCells.fill(0);
+    ctx.fillStyle = '#87967a'; ctx.strokeStyle = '#b9c8a7'; ctx.lineWidth = .7 / scale;
+    for (let column = 0; column < rays.width; column++) {
+      const x = rays.hitTileX[column]!, y = rays.hitTileY[column]!;
+      if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
+      const index = y * map.width + x;
+      if (this.wallCells[index]) continue;
+      this.wallCells[index] = 1;
+      ctx.fillRect(x, y, 1, 1); ctx.strokeRect(x, y, 1, 1);
     }
-    // The arrow rotates with yaw, while tiles remain north-up and centered.
-    ctx.fillStyle = '#e2edb1';
-    ctx.beginPath();
-    ctx.moveTo(center + player.directionX * 5, center + player.directionY * 5);
-    ctx.lineTo(center - player.directionX * 3 - player.directionY * 3, center - player.directionY * 3 + player.directionX * 3);
-    ctx.lineTo(center - player.directionX * 3 + player.directionY * 3, center - player.directionY * 3 - player.directionX * 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#e2edb1';
-    ctx.font = '7px monospace';
-    ctx.fillText('N', 4, 9);
-    ctx.strokeStyle = '#a0b196';
-    ctx.strokeRect(.5, .5, this.resolution - 1, this.resolution - 1);
+    // Markers use the same camera-space depth/column test as scene billboards.
+    const determinant = player.planeX * player.directionY - player.directionX * player.planeY;
+    if (Math.abs(determinant) > 1e-8) {
+      ctx.fillStyle = '#c98e65';
+      for (const entity of map.entities) this.drawMarker(entity.x, entity.y, .9, player, rays, determinant, scale);
+      ctx.fillStyle = '#edc971';
+      for (const exit of map.exits) this.drawMarker(exit.x + .5, exit.y + .5, 1.4, player, rays, determinant, scale);
+    }
+    ctx.restore();
+
+    ctx.fillStyle = '#e2edb1'; ctx.beginPath();
+    ctx.moveTo(centerX, playerY - 5); ctx.lineTo(centerX - 3, playerY + 3);
+    ctx.lineTo(centerX + 3, playerY + 3); ctx.closePath(); ctx.fill();
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(this.edgeMask, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  private drawMarker(x: number, y: number, radius: number, player: Player, rays: Raycaster, determinant: number, scale: number): void {
+    const dx = x - player.positionX, dy = y - player.positionY;
+    const depth = (-player.planeY * dx + player.planeX * dy) / determinant;
+    if (depth <= .05) return;
+    const cameraX = (player.directionY * dx - player.directionX * dy) / determinant;
+    const column = Math.floor(rays.width * .5 * (1 + cameraX / depth));
+    if (column < 0 || column >= rays.width || depth >= rays.depthBuffer[column]!) return;
+    this.context.beginPath(); this.context.arc(x, y, radius / scale, 0, Math.PI * 2); this.context.fill();
   }
 }

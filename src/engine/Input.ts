@@ -33,10 +33,6 @@ export class Input {
     rotatePlayer(this.player, event.movementX * PLAYER_CONFIG.mouseSensitivity);
     lookPlayer(this.player, -event.movementY * PLAYER_CONFIG.mouseSensitivity);
   };
-  private readonly onCanvasClick = (): void => {
-    if (this.suspended) return;
-    if (document.pointerLockElement !== this.canvas) void this.canvas.requestPointerLock();
-  };
   private readonly onPointerLockChange = (): void => {
     if (document.pointerLockElement !== this.canvas) this.keys.clear();
   };
@@ -49,7 +45,6 @@ export class Input {
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     document.addEventListener('pointerlockerror', this.onPointerLockError);
-    canvas.addEventListener('click', this.onCanvasClick);
   }
 
   get pointerLocked(): boolean { return document.pointerLockElement === this.canvas; }
@@ -87,7 +82,6 @@ export class Input {
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     document.removeEventListener('pointerlockerror', this.onPointerLockError);
-    this.canvas.removeEventListener('click', this.onCanvasClick);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.keys.clear();
   }

@@ -8,10 +8,8 @@ body { overflow: hidden; }
 #controls { position: absolute; left: 14px; bottom: 12px; color: #8b9a8d; font-size: 11px; opacity: .8; }
 #prompt { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); color: #e3d9a4; font-size: 13px; }
 #location-name { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); color: #d4d8c3; font-size: 12px; letter-spacing: .08em; text-align: center; text-shadow: 0 2px #000, 1px 0 #000, -1px 0 #000; }
-#capture-message { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); padding: 8px 12px; border: 1px solid #82947c; background: #0a110ecc; color: #cbd7bd; font-size: 12px; transition: opacity .2s; }
-#capture-message.hidden { opacity: 0; }
 #error { position: absolute; inset: 8%; display: none; padding: 18px; white-space: pre-wrap; background: #280e12ee; border: 1px solid #d25d5d; color: #ffd5c7; overflow: auto; }
-#minimap { position: absolute; width: 160px; height: 160px; max-width: calc(100vw - 28px); max-height: calc(100vh - 100px); image-rendering: pixelated; border: 1px solid #596e5c; box-shadow: 0 3px 15px #0008; opacity: .92; }
+#minimap { position: absolute; width: 160px; height: 160px; max-width: calc(100vw - 28px); max-height: calc(100vh - 100px); image-rendering: pixelated; opacity: .94; }
 #minimap[data-position="top-left"] { top: 54px; left: 14px; }
 #minimap[data-position="top-right"] { top: 54px; right: 14px; }
 #minimap[data-position="bottom-left"] { bottom: 38px; left: 14px; }

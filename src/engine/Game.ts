@@ -35,14 +35,9 @@ export class Game {
   private readonly settingsScreen: SettingsScreen;
   private readonly pauseMenu: PauseMenu;
   private transitionCooldown = 0;
-  private readonly canvas: HTMLCanvasElement;
-  private readonly captureMessage: HTMLElement;
   private readonly prompt: HTMLElement;
-  private pointerLockPending = false;
 
-  constructor(canvas: HTMLCanvasElement, captureMessage: HTMLElement, prompt: HTMLElement, seed: string) {
-    this.canvas = canvas;
-    this.captureMessage = captureMessage;
+  constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string) {
     this.prompt = prompt;
     this.world = new WorldManager(seed);
     this.player = createPlayer(this.world.currentMap);
@@ -57,17 +52,16 @@ export class Game {
       this.renderer.ambientOcclusion = settings.ambientOcclusion;
       this.frameRateLimiter.setLimit(settings.maxFps);
       this.frameRateLimiter.reset();
+      this.minimap.configure(settings.minimapPosition, settings.minimapSize);
       this.debugInfo.configure(settings);
     }, () => this.pauseMenu.show());
     this.pauseMenu = new PauseMenu(canvas, this.settingsScreen, paused => {
       this.input.setSuspended(paused);
-      this.pointerLockPending = !paused;
-      this.captureMessage.classList.add('hidden');
       if (paused) this.prompt.textContent = '';
+      this.previousTime = performance.now();
       this.frameRateLimiter.reset();
     });
-    document.addEventListener('pointerlockchange', this.onPointerLockChange);
-    document.addEventListener('pointerlockerror', this.onPointerLockError);
+    this.pauseMenu.pause();
     window.addEventListener('keydown', this.onDebugKey);
   }
 
@@ -79,18 +73,7 @@ export class Game {
     this.input.destroy();
     this.settingsScreen.destroy();
     window.removeEventListener('keydown', this.onDebugKey);
-    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
-    document.removeEventListener('pointerlockerror', this.onPointerLockError);
   }
-  private readonly onPointerLockChange = (): void => {
-    const locked = document.pointerLockElement === this.canvas;
-    if (locked) this.pointerLockPending = false;
-    this.captureMessage.classList.toggle('hidden', this.pauseMenu.paused || locked || this.pointerLockPending);
-  };
-  private readonly onPointerLockError = (): void => {
-    this.pointerLockPending = false;
-    if (!this.pauseMenu.paused && document.pointerLockElement !== this.canvas) this.captureMessage.classList.remove('hidden');
-  };
 
   private readonly onDebugKey = (event: KeyboardEvent): void => {
     if (event.repeat || event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || this.pauseMenu.paused) return;
@@ -108,7 +91,7 @@ export class Game {
     this.previousTime = time;
     if (this.pauseMenu.paused) {
       this.renderer.render(this.world.currentMap, this.player);
-      this.minimap.draw(this.world.currentMap, this.player);
+      this.minimap.draw(this.world.currentMap, this.player, this.renderer.raycaster);
       this.frameHandle = requestAnimationFrame(this.frame);
       return;
     }
@@ -122,7 +105,7 @@ export class Game {
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
     this.prompt.textContent = target ? `E · ${String(target.properties?.label ?? target.type)}` : '';
     this.renderer.render(this.world.currentMap, this.player);
-    this.minimap.draw(this.world.currentMap, this.player);
+    this.minimap.draw(this.world.currentMap, this.player, this.renderer.raycaster);
     this.drawOverlays();
     this.frameHandle = requestAnimationFrame(this.frame);
   };
