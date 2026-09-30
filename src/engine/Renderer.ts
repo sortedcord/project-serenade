@@ -1,4 +1,5 @@
 import type { GameMap } from '../world/GameMap';
+import type { MapEntity } from '../world/MapEntity';
 import { cameraHorizon, type Player } from './Player';
 import { FloorTextureCache, floorTexelIndex } from './FloorTexture';
 import { floorRasterRegion, floorWorldSample } from './FloorCasting';
@@ -59,7 +60,7 @@ export class Renderer {
   }
 
   /** Draws one frame. Map metadata overrides configured atmosphere where present. */
-  render(map: GameMap, player: Player): void {
+  render(map: GameMap, player: Player, remotePlayers: readonly MapEntity[] = []): void {
     const context = this.context;
     const horizon = cameraHorizon(player, this.height);
     const ceilingColor = map.metadata.ceilingColor ?? this.ceilingColor;
@@ -158,7 +159,7 @@ export class Renderer {
       }
       context.globalAlpha = 1;
     }
-    this.spriteRenderer.render(context, map.entities, player, this.raycaster, lighting, ambientBrightness, minimumBrightness, fogDistance);
+    this.spriteRenderer.render(context, map.entities, player, this.raycaster, lighting, ambientBrightness, minimumBrightness, fogDistance, remotePlayers);
     context.globalAlpha = 1;
   }
   private parseColor(color: string): [number, number, number] {

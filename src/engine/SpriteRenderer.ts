@@ -22,12 +22,14 @@ export class SpriteRenderer {
     ambientBrightness: number,
     minimumBrightness: number,
     fogDistance: number,
+    remotePlayers: readonly MapEntity[] = [],
   ): void {
     const determinant = player.planeX * player.directionY - player.directionX * player.planeY;
     if (Math.abs(determinant) < 1e-8) return;
     const inverseDeterminant = 1 / determinant;
     this.projectionCount = 0;
-    for (const entity of entities) {
+    for (let entityIndex = 0; entityIndex < entities.length + remotePlayers.length; entityIndex++) {
+      const entity = entityIndex < entities.length ? entities[entityIndex]! : remotePlayers[entityIndex - entities.length]!;
       const relativeX = entity.x - player.positionX;
       const relativeY = entity.y - player.positionY;
       const depth = inverseDeterminant * (-player.planeY * relativeX + player.planeX * relativeY);

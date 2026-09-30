@@ -20,6 +20,19 @@ npm test
 
 The game starts paused. Choose **Resume** to begin. Add `?seed=some-text` to the URL to generate the same starting world again.
 
+## Co-op exploration
+
+Solo play remains the default. Start the relay and Vite in separate terminals:
+
+```sh
+npm run server
+npm run dev
+```
+
+Open the same Vite URL in both clients with the same room name, for example `http://localhost:5173/?room=night-shift`. The first client creates the room and its shared world seed; subsequent clients receive that seed and generate the same starting map. Room names contain 1–32 letters, numbers, underscores, or hyphens. The relay listens on port `8787` by default (`PORT=9000 npm run server` changes it). Vite proxies `/coop` to port 8787 in development. In production, host the static `npm run build` output and the WebSocket relay on the same host with `/coop` forwarded to the relay, or set `?room=night-shift&ws=wss://your-host.example/coop` to specify the WebSocket endpoint.
+
+The relay assigns player IDs, owns room membership and seed, relays validated position/angle snapshots, and removes disconnected players. Input and collision remain client-local. This is a trusted-session relay, not an authoritative movement simulation: clients can report arbitrary finite coordinates, there is no authentication, persistence, map-transition synchronization, or anti-cheat. Join only relays and rooms with people you trust.
+
 ## Play
 
 | Input | Action |

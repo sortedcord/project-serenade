@@ -16,6 +16,7 @@ import { nearestInteractable } from './SpriteAssets';
 import { FrameRateLimiter } from './FrameRateLimiter';
 import { ExitTransitionGate } from './ExitTransitionGate';
 import { GamepadInput } from './GamepadInput';
+import type { CoopClient } from './CoopClient';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
   readonly renderer: Renderer;
@@ -36,8 +37,10 @@ export class Game {
   private readonly pauseMenu: PauseMenu;
   private readonly exitTransitionGate = new ExitTransitionGate();
   private readonly prompt: HTMLElement;
+  readonly coop: CoopClient | null;
 
-  constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string) {
+  constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string, coop: CoopClient | null = null) {
+    this.coop = coop;
     this.prompt = prompt;
     this.world = new WorldManager(seed);
     this.player = createPlayer(this.world.currentMap);
@@ -96,11 +99,12 @@ export class Game {
     const dt = Math.min(.08, elapsed);
     this.previousTime = time;
     if (this.pauseMenu.paused) {
-      this.renderer.render(this.world.currentMap, this.player);
+      this.renderer.render(this.world.currentMap, this.player, this.coop?.remoteEntities);
       this.minimap.draw(this.world.currentMap, this.player, this.renderer.raycaster);
       this.frameHandle = requestAnimationFrame(this.frame);
       return;
     }
+    if (this.coop) this.coop.update(this.player);
     const actions = this.input.update(this.world.currentMap, dt, controller);
     if (actions.toggleDebugMap) this.showMap = !this.showMap;
     if (actions.interact && !wasPaused) this.interact();
@@ -108,7 +112,7 @@ export class Game {
     this.debugInfo.updateFrame(elapsed);
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
     this.prompt.textContent = target ? `${controller.connected ? 'A' : 'E'} · ${String(target.properties?.label ?? target.type)}` : '';
-    this.renderer.render(this.world.currentMap, this.player);
+    this.renderer.render(this.world.currentMap, this.player, this.coop?.remoteEntities);
     this.minimap.draw(this.world.currentMap, this.player, this.renderer.raycaster);
     this.drawOverlays();
     this.frameHandle = requestAnimationFrame(this.frame);
@@ -166,6 +170,11 @@ export class Game {
     this.input.setPlayer(this.player);
   }
 
+  setWorldSeed(seed: string): void {
+    const map = this.world.regenerate(seed);
+    this.player = createPlayer(map);
+    this.input.setPlayer(this.player);
+  }
 }
 
 export function createStartingSeed(): string {
