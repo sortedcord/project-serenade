@@ -14,6 +14,7 @@ import { PauseMenu } from './PauseMenu';
 import { DebugInfoPanel } from './DebugInfoPanel';
 import { nearestInteractable } from './SpriteAssets';
 import { FrameRateLimiter } from './FrameRateLimiter';
+import { ExitTransitionGate } from './ExitTransitionGate';
 import { GamepadInput } from './GamepadInput';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
@@ -33,7 +34,7 @@ export class Game {
   private readonly gamepad = new GamepadInput();
   private showMap = false;
   private readonly pauseMenu: PauseMenu;
-  private transitionCooldown = 0;
+  private readonly exitTransitionGate = new ExitTransitionGate();
   private readonly prompt: HTMLElement;
 
   constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string) {
@@ -103,7 +104,6 @@ export class Game {
     const actions = this.input.update(this.world.currentMap, dt, controller);
     if (actions.toggleDebugMap) this.showMap = !this.showMap;
     if (actions.interact && !wasPaused) this.interact();
-    this.transitionCooldown = Math.max(0, this.transitionCooldown - dt);
     this.transitionAtExit();
     this.debugInfo.updateFrame(elapsed);
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
@@ -142,17 +142,20 @@ export class Game {
   }
 
   private transitionAtExit(): void {
-    if (this.transitionCooldown > 0) return;
     const map = this.world.currentMap;
-    const exit = map.exits.find(item => Math.hypot(this.player.positionX - (item.x + .5), this.player.positionY - (item.y + .5)) < .55);
-    if (!exit || !exit.targetMapId) return;
-    const transition = this.world.transition(exit);
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    let nearestExit = undefined as typeof map.exits[number] | undefined;
+    for (const exit of map.exits) {
+      const distance = Math.hypot(this.player.positionX - (exit.x + .5), this.player.positionY - (exit.y + .5));
+      if (distance < nearestDistance) { nearestDistance = distance; nearestExit = exit; }
+    }
+    if (!this.exitTransitionGate.canTransition(nearestDistance) || !nearestExit?.targetMapId) return;
+    const transition = this.world.transition(nearestExit);
     if (!transition) return;
     this.player = createPlayer(transition.map);
     this.player.positionX = transition.spawnX;
     this.player.positionY = transition.spawnY;
     rotatePlayer(this.player, transition.angle - Math.atan2(this.player.directionY, this.player.directionX));
-    this.transitionCooldown = .8;
     this.input.setPlayer(this.player);
   }
 
