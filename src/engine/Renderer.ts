@@ -1,5 +1,7 @@
 import type { GameMap } from '../world/GameMap';
 import { cameraHorizon, type Player } from './Player';
+import { FloorTextureCache, floorTexelIndex } from './FloorTexture';
+import { floorRasterRegion, floorWorldSample } from './FloorCasting';
 import { Raycaster } from './Raycaster';
 import { SpriteRenderer } from './SpriteRenderer';
 import { TextureManager } from './TextureManager';
@@ -20,8 +22,10 @@ export class Renderer {
   readonly height: number;
   readonly canvas: HTMLCanvasElement;
   readonly context: CanvasRenderingContext2D;
+  private readonly floorPixels: ImageData;
   readonly raycaster: Raycaster;
   readonly textures: TextureManager;
+  private readonly floorTextures: FloorTextureCache;
   readonly spriteRenderer: SpriteRenderer;
   private floorColor: string;
   private ceilingColor: string;
@@ -39,12 +43,14 @@ export class Renderer {
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) throw new Error('Canvas 2D is unavailable for the game renderer.');
     this.context = context;
+    this.floorPixels = context.createImageData(this.width, this.height);
     context.imageSmoothingEnabled = false;
     this.floorColor = options.floorColor ?? '#222522';
     this.ceilingColor = options.ceilingColor ?? '#171d1c';
     this.fogDistance = options.fogDistance ?? 13;
     this.minimumBrightness = options.minimumBrightness ?? 0.2;
     this.ambientBrightness = options.ambientBrightness ?? 0.75;
+    this.floorTextures = new FloorTextureCache();
     this.raycaster = new Raycaster(this.width, this.height);
     this.textures = new TextureManager();
     this.spriteRenderer = new SpriteRenderer(this.textures);
@@ -56,10 +62,29 @@ export class Renderer {
     const horizon = cameraHorizon(player, this.height);
     context.fillStyle = map.metadata.ceilingColor ?? this.ceilingColor;
     context.fillRect(0, 0, this.width, horizon);
-    context.fillStyle = map.metadata.floorColor ?? this.floorColor;
+    const floorColor = map.metadata.floorColor ?? this.floorColor;
+    context.fillStyle = floorColor;
     context.fillRect(0, horizon, this.width, this.height - horizon);
-    this.raycaster.cast(map, player);
+    const { startY: floorStart, height: floorHeight } = floorRasterRegion(horizon, this.height);
+    const floorPixels = this.floorPixels.data;
+    const texture = this.floorTextures.get(floorColor);
     const fogDistance = map.metadata.fogDistance ?? this.fogDistance;
+    const floorSample = { x: 0, y: 0, distance: 0 };
+    for (let screenY = floorStart; screenY < floorStart + floorHeight; screenY++) {
+      const rowStart = screenY * this.width * 4;
+      for (let screenX = 0; screenX < this.width; screenX++) {
+        floorWorldSample(player, screenX, screenY, this.width, this.height, horizon, floorSample);
+        const texel = floorTexelIndex(floorSample.x, floorSample.y, texture.size) * 4;
+        const fog = Math.max(0.32, 1 - floorSample.distance / fogDistance);
+        const index = rowStart + screenX * 4;
+        floorPixels[index] = texture.pixels[texel]! * fog;
+        floorPixels[index + 1] = texture.pixels[texel + 1]! * fog;
+        floorPixels[index + 2] = texture.pixels[texel + 2]! * fog;
+        floorPixels[index + 3] = 255;
+      }
+    }
+    if (floorHeight > 0) context.putImageData(this.floorPixels, 0, 0, 0, floorStart, this.width, floorHeight);
+    this.raycaster.cast(map, player);
     const minimumBrightness = map.metadata.minimumBrightness ?? this.minimumBrightness;
     const ambientBrightness = map.metadata.ambientBrightness ?? this.ambientBrightness;
     for (let x = 0; x < this.width; x += 1) {
