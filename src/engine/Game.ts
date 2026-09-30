@@ -31,7 +31,6 @@ export class Game {
   private readonly settingsScreen: SettingsScreen;
   private destroyed = false;
   private readonly gamepad = new GamepadInput();
-  private readonly gamepadStatus: HTMLElement;
   private showMap = false;
   private readonly pauseMenu: PauseMenu;
   private transitionCooldown = 0;
@@ -39,9 +38,6 @@ export class Game {
 
   constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string) {
     this.prompt = prompt;
-    const gamepadStatus = document.querySelector<HTMLElement>('#gamepad-status');
-    if (!gamepadStatus) throw new Error('Game page is missing the controller status.');
-    this.gamepadStatus = gamepadStatus;
     this.world = new WorldManager(seed);
     this.player = createPlayer(this.world.currentMap);
     this.renderer = new Renderer(canvas);
@@ -91,7 +87,6 @@ export class Game {
     this.pauseMenu.handleController(controller);
     // Do not let the button that resumes gameplay also interact with an entity.
     if (!wasPaused && !this.pauseMenu.paused) this.input.queueControllerActions(controller);
-    if (this.gamepadStatus.textContent !== controller.status) this.gamepadStatus.textContent = controller.status;
     if (!this.frameRateLimiter.shouldRender(time)) {
       this.frameHandle = requestAnimationFrame(this.frame);
       return;
