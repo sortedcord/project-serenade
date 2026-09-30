@@ -19,20 +19,31 @@ type SliderSetting = keyof typeof controls;
 export class SettingsScreen {
   private readonly shade: HTMLElement;
   private readonly panel: HTMLElement;
-  private readonly closeButton: HTMLButtonElement;
-  private readonly doneButton: HTMLButtonElement;
+  private readonly backButton: HTMLButtonElement;
+  private readonly categoryMenu: HTMLElement;
+  private readonly title: HTMLElement;
+  private readonly breadcrumb: HTMLElement;
+  private readonly help: HTMLElement;
   private readonly sliders: Record<SliderSetting, HTMLInputElement>;
   private readonly outputs: Record<SliderSetting, HTMLOutputElement>;
   private readonly positionSelect: HTMLSelectElement;
   private readonly debugVisible: HTMLInputElement;
   private readonly debugFieldOptions: HTMLElement;
+  private readonly categoryButtons: HTMLButtonElement[];
+  private readonly categories: HTMLElement[];
+  private selectedCategory = -1;
+  private previousCategory = 0;
+  private navigation: (HTMLInputElement | HTMLButtonElement | HTMLSelectElement)[] = [];
   private readonly values: GameSettings;
 
   constructor(private readonly onChange: (settings: GameSettings) => void, private readonly onClose: () => void) {
     this.shade = requireElement('#settings-shade');
     this.panel = requireElement('#settings-panel');
-    this.closeButton = requireElement<HTMLButtonElement>('#settings-close');
-    this.doneButton = requireElement<HTMLButtonElement>('#settings-done');
+    this.backButton = requireElement<HTMLButtonElement>('#settings-back');
+    this.categoryMenu = requireElement('#settings-categories');
+    this.title = requireElement('#settings-title');
+    this.breadcrumb = requireElement('#settings-breadcrumb');
+    this.help = requireElement('#settings-help');
     this.sliders = {
       movementSpeed: requireElement<HTMLInputElement>(controls.movementSpeed.input),
       bobFrequency: requireElement<HTMLInputElement>(controls.bobFrequency.input),
@@ -59,13 +70,15 @@ export class SettingsScreen {
     this.debugFieldOptions = requireElement<HTMLElement>('#debug-field-options');
     this.buildDebugFieldOptions();
     this.positionSelect = requireElement<HTMLSelectElement>('#setting-minimap-position');
+    this.categoryButtons = Array.from(this.panel.querySelectorAll<HTMLButtonElement>('[data-category-button]'));
+    this.categories = Array.from(this.panel.querySelectorAll<HTMLElement>('[data-category]'));
+    for (const button of this.categoryButtons) button.addEventListener('click', this.onCategoryClick);
     this.values = loadGameSettings();
     this.syncControls();
     this.onChange({ ...this.values });
 
-    this.closeButton.addEventListener('click', this.close);
-    this.doneButton.addEventListener('click', this.close);
-    this.shade.addEventListener('click', this.onShadeClick);
+    this.backButton.addEventListener('click', this.back);
+    this.panel.addEventListener('keydown', this.onKeyDown);
     this.sliders.movementSpeed.addEventListener('input', this.onMovementSpeed);
     this.sliders.bobFrequency.addEventListener('input', this.onBobFrequency);
     this.sliders.mouseSensitivity.addEventListener('input', this.onMouseSensitivity);
@@ -82,34 +95,67 @@ export class SettingsScreen {
 
   get isOpen(): boolean { return !this.shade.hidden; }
   handleController(controller: ControllerState): void {
-    if (controller.back || controller.pause) { this.close(); return; }
-    const elements = this.panel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('button, input, select');
-    if (!elements.length) return;
-    let index = Array.from(elements).findIndex(element => element === document.activeElement);
-    if (controller.up || controller.down || index < 0) {
-      const direction = controller.up ? -1 : 1;
-      index = index < 0 ? 0 : (index + direction + elements.length) % elements.length;
-      elements[index]!.focus();
+    if (controller.back || controller.pause) { this.back(); return; }
+    const elements = this.navigation;
+    let index = elements.findIndex(element => element === document.activeElement);
+    if (index < 0) {
+      elements[0]?.focus();
+      return;
     }
-    const active = elements[index < 0 ? 0 : index]!;
+    if (controller.up || controller.down) {
+      index = (index + (controller.up ? -1 : 1) + elements.length) % elements.length;
+      elements[index]!.focus({ preventScroll: true });
+      elements[index]!.closest('label')?.scrollIntoView({ block: 'nearest' });
+    }
+    const focused = elements[index]!;
     if (controller.left || controller.right) {
       const direction = controller.right ? 1 : -1;
-      if (active instanceof HTMLInputElement && active.type === 'range') {
-        active.value = String(Math.max(Number(active.min), Math.min(Number(active.max), Number(active.value) + direction * Number(active.step))));
-        active.dispatchEvent(new Event('input', { bubbles: true }));
-      } else if (active instanceof HTMLSelectElement) {
-        active.selectedIndex = (active.selectedIndex + direction + active.options.length) % active.options.length;
-        active.dispatchEvent(new Event('change', { bubbles: true }));
+      if (focused instanceof HTMLInputElement && focused.type === 'range') {
+        focused.value = String(Math.max(Number(focused.min), Math.min(Number(focused.max), Number(focused.value) + direction * Number(focused.step))));
+        focused.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (focused instanceof HTMLSelectElement) {
+        focused.selectedIndex = Math.max(0, Math.min(focused.options.length - 1, focused.selectedIndex + direction));
+        focused.dispatchEvent(new Event('change', { bubbles: true }));
       }
     }
-    if (controller.confirm && (active instanceof HTMLButtonElement || (active instanceof HTMLInputElement && active.type === 'checkbox'))) active.click();
+    if (controller.confirm && (focused instanceof HTMLButtonElement || (focused instanceof HTMLInputElement && focused.type === 'checkbox'))) focused.click();
+  }
+
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    const tab = event.key === 'Tab';
+    if (!tab && event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    if (!tab && document.activeElement instanceof HTMLSelectElement) return;
+    event.preventDefault();
+    const index = this.navigation.findIndex(element => element === document.activeElement);
+    const direction = tab ? (event.shiftKey ? -1 : 1) : (event.key === 'ArrowUp' ? -1 : 1);
+    const next = index < 0 ? (direction < 0 ? this.navigation.length - 1 : 0) : (index + direction + this.navigation.length) % this.navigation.length;
+    this.navigation[next]?.focus({ preventScroll: true });
+    this.navigation[next]?.closest('label')?.scrollIntoView({ block: 'nearest' });
+  };
+
+  private readonly onCategoryClick = (event: MouseEvent): void => {
+    this.selectedCategory = this.categoryButtons.indexOf(event.currentTarget as HTMLButtonElement);
+    this.previousCategory = this.selectedCategory;
+    this.showLevel();
+  };
+
+  private showLevel(): void {
+    const root = this.selectedCategory < 0;
+    this.categoryMenu.hidden = !root;
+    this.categories.forEach((category, index) => { category.hidden = index !== this.selectedCategory; });
+    this.title.textContent = root ? 'Settings' : ['Controls', 'Display & map', 'Debug'][this.selectedCategory]!;
+    this.breadcrumb.textContent = root ? 'Below the Signal' : 'Settings / ' + String(this.selectedCategory + 1).padStart(2, '0');
+    this.help.textContent = root ? '↑ ↓ Navigate · A / Enter Select · B / Esc Back' : '↑ ↓ Navigate · ← → Adjust · A Toggle · B / Esc Back';
+    this.navigation = Array.from(this.panel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('button, input, select')).filter(element => !element.closest('[hidden]'));
+    this.panel.querySelector('.settings-body')!.scrollTop = 0;
+    (root ? this.categoryButtons[this.previousCategory] : this.navigation[0])?.focus({ preventScroll: true });
   }
 
 
   destroy(): void {
-    this.closeButton.removeEventListener('click', this.close);
-    this.doneButton.removeEventListener('click', this.close);
-    this.shade.removeEventListener('click', this.onShadeClick);
+    this.backButton.removeEventListener('click', this.back);
+    this.panel.removeEventListener('keydown', this.onKeyDown);
+    for (const button of this.categoryButtons) button.removeEventListener('click', this.onCategoryClick);
     this.sliders.movementSpeed.removeEventListener('input', this.onMovementSpeed);
     this.sliders.bobFrequency.removeEventListener('input', this.onBobFrequency);
     this.sliders.mouseSensitivity.removeEventListener('input', this.onMouseSensitivity);
@@ -126,7 +172,8 @@ export class SettingsScreen {
 
   readonly open = (): void => {
     this.shade.hidden = false;
-    this.panel.focus();
+    this.selectedCategory = -1;
+    this.showLevel();
   };
 
   readonly close = (): void => {
@@ -135,8 +182,12 @@ export class SettingsScreen {
   };
 
 
-  private readonly onShadeClick = (event: MouseEvent): void => {
-    if (event.target === this.shade) this.close();
+  readonly back = (): void => {
+    if (this.selectedCategory < 0) this.close();
+    else {
+      this.selectedCategory = -1;
+      this.showLevel();
+    }
   };
 
   private readonly onMovementSpeed = (): void => this.update('movementSpeed');
@@ -203,6 +254,9 @@ export class SettingsScreen {
     }
     for (const key of Object.keys(controls) as SliderSetting[]) {
       this.sliders[key].value = String(key === 'maxFps' && this.values[key] === 0 ? FPS_RANGE_MAX : this.values[key]);
+      const slider = this.sliders[key];
+      const fill = (Number(slider.value) - Number(slider.min)) / (Number(slider.max) - Number(slider.min));
+      slider.style.setProperty('--fill', `${fill * 100}%`);
       this.outputs[key].value = key === 'mouseSensitivity'
         ? `${(this.values[key] * 1000).toFixed(1)} px`
         : key === 'ambientOcclusion'

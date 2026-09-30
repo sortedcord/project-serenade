@@ -49,7 +49,7 @@ The game starts paused. Choose **Resume** to begin. Add `?seed=some-text` to the
 | R | Generate a new world |
 | Escape | Pause and release the mouse; press again to resume |
 
-An Xbox-compatible gamepad can also move and look, interact, navigate menus, and pause. In menus, use the D-pad or left stick to move between controls, **A** to select, and **B** to go back. The browser may require a button press while the game page is focused before it detects a controller.
+An Xbox-compatible gamepad can also move and look, interact, navigate menus, and pause. In menus, use the D-pad or left stick to move, **A** to choose a settings category or toggle a control, **left/right** to adjust the focused value, and **B** to go back one level. Settings opens with a category list; choose **Controls**, **Display & map**, or **Debug** to open that group. **B** or **Escape** returns to the category list, then backs out to the pause menu. Settings save automatically. The browser may require a button press while the game page is focused before it detects a controller.
 
 The gold marker on the map is an exit. Walk into it to move to another submap; returning through the paired exit restores the earlier map. Open **Settings** from the pause menu to adjust movement, camera response, frame-rate limit, ambient occlusion, minimap size and range, and debug-panel display. Settings are saved in the browser.
 

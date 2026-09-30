@@ -117,16 +117,13 @@ export class PauseMenu {
     if (key === 'escape') {
       event.preventDefault(); event.stopImmediatePropagation();
       if (event.repeat) return;
-      if (this.settings.isOpen) this.settings.close();
+      if (this.settings.isOpen) this.settings.back();
       else if (this.paused) this.resume();
       else this.pause();
       return;
     }
     if (!this.paused) return;
-    if (this.settings.isOpen) {
-      if (key === 'tab') this.trapSettingsFocus(event);
-      return;
-    }
+    if (this.settings.isOpen) return;
     event.stopImmediatePropagation();
     if (key === 'w' || key === 'arrowup' || key === 's' || key === 'arrowdown' || key === 'tab') {
       event.preventDefault();
@@ -139,14 +136,6 @@ export class PauseMenu {
     }
   };
 
-  private trapSettingsFocus(event: KeyboardEvent): void {
-    const elements = document.querySelectorAll<HTMLElement>('#settings-panel button, #settings-panel input, #settings-panel select');
-    const first = elements[0], last = elements[elements.length - 1];
-    if (!first || !last) return;
-    if (event.shiftKey && (document.activeElement === first || document.activeElement?.id === 'settings-panel')) {
-      event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-  }
 
   private updateSelection(): void { this.buttons.forEach((button, index) => button.classList.toggle('selected', index === this.selected)); }
 
