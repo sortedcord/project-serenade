@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" role="img" aria-labelledby="title desc">
+  <title id="title">Below the Signal — a raycast tunnel</title>
+  <desc id="desc">A low-resolution first-person view down a dim industrial passage, with tiled concrete walls, a central crosshair, a tiny map and a softly flickering amber lamp.</desc>
+  <style>
+    .pixel { shape-rendering: crispEdges }
+    .look { transform-box: fill-box; transform-origin: 50% 56%; animation: look 6s ease-in-out infinite }
+    .lamp { animation: lamp 6s steps(1,end) infinite }
+    .scan { animation: scan 6s ease-in-out infinite }
+    @keyframes look { 0%,100% { transform: translate(0,0) } 25% { transform: translate(-2px,1px) } 50% { transform: translate(1px,0) } 75% { transform: translate(2px,-1px) } }
+    @keyframes lamp { 0%,14%,21%,67%,100% { opacity: 1 } 15%,20%,68% { opacity: .42 } }
+    @keyframes scan { 0%,100% { opacity: .14 } 50% { opacity: .27 } }
+    @media (prefers-reduced-motion: reduce) { .look,.lamp,.scan { animation: none } }
+  </style>
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#111817"/><stop offset="1" stop-color="#26302b"/></linearGradient>
+    <linearGradient id="floor" x2="0" y2="1"><stop stop-color="#34372f"/><stop offset="1" stop-color="#151a18"/></linearGradient>
+    <linearGradient id="left" x2="1" y2=".35"><stop stop-color="#41433a"/><stop offset=".72" stop-color="#303932"/><stop offset="1" stop-color="#202923"/></linearGradient>
+    <linearGradient id="right" x2="0" y2=".35"><stop stop-color="#26302d"/><stop offset=".55" stop-color="#36403a"/><stop offset="1" stop-color="#4a493e"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#e4bd64" stop-opacity=".5"/><stop offset="1" stop-color="#e4bd64" stop-opacity="0"/></radialGradient>
+    <radialGradient id="shade"><stop offset=".46" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#030605" stop-opacity=".72"/></radialGradient>
+    <pattern id="grain" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 7.5H8" stroke="#d5d1b6" stroke-opacity=".035"/></pattern>
+    <clipPath id="screen"><rect x="0" y="0" width="960" height="440" rx="8"/></clipPath>
+  </defs>
+  <g clip-path="url(#screen)">
+    <rect width="960" height="440" fill="#090d0c"/>
+    <g class="look">
+      <rect width="960" height="214" fill="url(#sky)"/>
+      <path d="M0 0H960V112L627 166H333L0 108Z" fill="#18201e"/>
+      <path d="M0 0H960V35L610 144H350L0 33Z" fill="#222925"/>
+      <path d="M0 0H960L636 144H324Z" fill="#1a211e"/>
+      <path d="M0 0H109L332 154 302 214H0Z" fill="url(#left)"/>
+      <path d="M960 0H851L628 154 658 214H960Z" fill="url(#right)"/>
+      <path d="M0 440V214L302 214 480 193 658 214H960V440L536 252H424Z" fill="url(#floor)"/>
+      <path d="M0 212L302 212 480 190 658 212 960 212" fill="none" stroke="#758073" stroke-opacity=".35" stroke-width="3"/>
+      <!-- Recurring portal frames establish the raycast vanishing point. -->
+      <path d="M118 0H842L624 150H336Z" fill="none" stroke="#60685c" stroke-width="9"/>
+      <path d="M118 0V440M842 0V440" stroke="#161c19" stroke-width="17"/>
+      <path d="M118 0V198M842 0V198" stroke="#839080" stroke-opacity=".34" stroke-width="3"/>
+      <path d="M236 0H724L598 146H362Z" fill="none" stroke="#3b443d" stroke-width="7"/>
+      <path d="M236 0V213M724 0V213" stroke="#202823" stroke-width="13"/>
+      <path d="M316 0H644L574 143H386Z" fill="none" stroke="#62695a" stroke-opacity=".72" stroke-width="5"/>
+      <path d="M316 0V218M644 0V218" stroke="#41483f" stroke-width="7"/>
+      <path d="M0 119L322 166M0 160L305 185M960 117L638 166M960 158L655 185" stroke="#858374" stroke-opacity=".24" stroke-width="3"/>
+      <!-- Chunky concrete and brick-like wall panels. -->
+      <g class="pixel" opacity=".92">
+        <path d="M18 56H87V97H18ZM103 51H165V89H103ZM36 107H121V146H36ZM137 99H204V133H137ZM17 159H103V195H17ZM119 151H201V184H119Z" fill="#4a4b40"/>
+        <path d="M23 62H80V67H23ZM108 57H159V62H108ZM42 112H115V117H42ZM143 104H197V109H143ZM24 165H97V170H24ZM125 157H195V162H125Z" fill="#777364" opacity=".46"/>
+        <path d="M873 50H940V92H873ZM797 56H857V96H797ZM842 104H927V144H842ZM760 103H827V137H760ZM858 155H944V194H858ZM777 149H845V184H777Z" fill="#4a4b40"/>
+        <path d="M879 56H934V61H879ZM803 62H851V67H803ZM848 110H921V115H848ZM766 109H821V114H766ZM864 161H938V166H864ZM783 155H839V160H783Z" fill="#777364" opacity=".46"/>
+        <path d="M33 124H105V132H33M151 172H194V180H151M876 123H922V131H876M790 81H843V88H790" stroke="#8a5544" stroke-width="7" opacity=".68"/>
+      </g>
+      <!-- Floor seams and broken reflections. -->
+      <g fill="none" stroke="#8a8975" stroke-opacity=".3">
+        <path d="M480 194L48 440M480 194L218 440M480 194L364 440M480 194L596 440M480 194L742 440M480 194L914 440"/>
+        <path d="M426 218H534M378 238H582M307 268H653M208 310H752M87 365H873" stroke-width="2"/>
+      </g>
+      <path d="M375 148H405V156H375Z" fill="#a6aa8c" opacity=".26"/><path d="M555 148H585V156H555Z" fill="#a6aa8c" opacity=".26"/>
+      <ellipse cx="480" cy="151" rx="88" ry="34" fill="url(#glow)" class="lamp"/>
+      <path d="M466 137H494V145H466Z" fill="#d0b66c"/><path d="M470 145H490V150H470Z" fill="#756644"/>
+      <!-- A distant terminal gives the corridor a readable destination. -->
+      <path d="M458 173H502V196H458Z" fill="#293832" stroke="#81927b" stroke-width="2"/>
+      <path d="M465 178H495V187H465Z" fill="#6eae9d"/><path d="M472 190H488V193H472Z" fill="#d5c279"/>
+    </g>
+    <rect width="960" height="440" fill="url(#grain)" class="scan"/>
+    <!-- Minimal diegetic overlays echo the game's optional map and status HUD. -->
+    <g transform="translate(22 20)" class="pixel">
+      <path d="M0 0H118V88H0Z" fill="#07100ddd" stroke="#77816e" stroke-width="2"/>
+      <path d="M14 14H103V75H14Z" fill="#101916"/>
+      <path d="M22 22H37V34H22ZM37 34H53V46H37ZM53 46H69V58H53ZM69 58H94V70H69ZM53 22H69V34H53ZM84 34H100V46H84Z" fill="#687663"/>
+      <path d="M22 58H37V70H22ZM84 14H100V26H84Z" fill="#76694f"/>
+      <path d="M60 49L66 61H54Z" fill="#e1c36d"/>
+      <text x="8" y="-6" fill="#aebaa5" font-family="monospace" font-size="9" letter-spacing="1.4">LOCAL MAP</text>
+    </g>
+    <g transform="translate(755 22)" fill="#c7d0bd" font-family="monospace" text-anchor="end">
+      <path d="M0 0H184V58H0Z" fill="#07100ddd" stroke="#596653" stroke-width="2"/>
+      <text x="173" y="17" font-size="10" letter-spacing="1.2" fill="#9eae93">FIELD READOUT</text>
+      <text x="173" y="34" font-size="11">SECTOR 04 <tspan fill="#d3bd74">●</tspan></text>
+      <text x="173" y="49" font-size="10" fill="#91a094">DEPTH  12.8m</text>
+    </g>
+    <!-- Open, pale-sage crosshair. -->
+    <g transform="translate(480 220)" fill="none" stroke="#d6e1c9" stroke-width="2" opacity=".86">
+      <path d="M-15 0H-6M6 0H15M0-15V-6M0 6V15"/><rect x="-2" y="-2" width="4" height="4" fill="#d6e1c9" stroke="none"/>
+    </g>
+    <rect width="960" height="440" fill="url(#shade)"/>
+    <path d="M0 405H960" stroke="#73806a" stroke-opacity=".35"/>
+    <text x="480" y="426" text-anchor="middle" fill="#cbd3bd" font-family="monospace" font-size="11" letter-spacing="2.4">MAINTENANCE PASSAGE  /  LOWER ACCESS</text>
+    <rect x="1" y="1" width="958" height="438" rx="8" fill="none" stroke="#64715f" stroke-opacity=".56" stroke-width="2"/>
+  </g>
+</svg>

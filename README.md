@@ -1,6 +1,7 @@
 # Project Serenade
 
 A small browser-based exploration game built around a simple idea: make a 2D tile map feel like a low-resolution 3D world. Serenade draws each frame on an HTML Canvas with a grid raycaster; it does not use a 3D engine.
+![Animated pixel-art view down a dim industrial raycast tunnel, with a minimap, crosshair, and field readout.](assets/serenade-tunnel.svg)
 
 ## Run locally
 
