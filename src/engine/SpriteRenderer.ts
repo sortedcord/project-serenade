@@ -1,5 +1,6 @@
 import type { MapEntity } from '../world/MapEntity';
 import { cameraHorizon, type Player } from './Player';
+import type { MapLighting } from './lighting/LightMap';
 import type { Raycaster } from './Raycaster';
 import type { TextureManager } from './TextureManager';
 
@@ -12,7 +13,16 @@ export class SpriteRenderer {
 
   constructor(private readonly textures: TextureManager) {}
 
-  render(context: CanvasRenderingContext2D, entities: readonly MapEntity[], player: Player, raycaster: Raycaster): void {
+  render(
+    context: CanvasRenderingContext2D,
+    entities: readonly MapEntity[],
+    player: Player,
+    raycaster: Raycaster,
+    lighting: MapLighting,
+    ambientBrightness: number,
+    minimumBrightness: number,
+    fogDistance: number,
+  ): void {
     const determinant = player.planeX * player.directionY - player.directionX * player.planeY;
     if (Math.abs(determinant) < 1e-8) return;
     const inverseDeterminant = 1 / determinant;
@@ -54,7 +64,8 @@ export class SpriteRenderer {
       const startX = Math.max(0, Math.floor(screenX - drawWidth / 2));
       const endX = Math.min(width - 1, Math.floor(screenX + drawWidth / 2));
       if (startX > endX || startY > endY) continue;
-      const texture = this.textures.getSpriteTexture(entity.type);
+      const brightness = Math.max(minimumBrightness, Math.min(1, ambientBrightness + lighting.sample(entity.x, entity.y)) * Math.max(0.32, 1 - projection.distance / fogDistance));
+      const texture = this.textures.getShadedSpriteTexture(entity.type, brightness);
       for (let stripe = startX; stripe <= endX; stripe += 1) {
         if (transformY >= raycaster.depthBuffer[stripe]) continue;
         const textureX = Math.max(0, Math.min(texture.width - 1, Math.floor((stripe - (screenX - drawWidth / 2)) * texture.width / drawWidth)));

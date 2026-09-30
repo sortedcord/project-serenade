@@ -18,6 +18,7 @@ const materialColors: Record<number, [number, number, number]> = {
 export class TextureManager {
   private readonly materials = new Map<number, WallMaterial>();
   private readonly sprites = new Map<string, HTMLCanvasElement>();
+  private readonly shadedSprites = new Map<string, Map<number, HTMLCanvasElement>>();
 
   getSpriteTexture(type: string): HTMLCanvasElement {
     const cached = this.sprites.get(type);
@@ -59,6 +60,29 @@ export class TextureManager {
       context.fillRect(10, 17, 12, 2);
     }
     this.sprites.set(type, canvas);
+    return canvas;
+  }
+
+  getShadedSpriteTexture(type: string, brightness: number): HTMLCanvasElement {
+    const level = Math.max(0, Math.min(16, Math.round(brightness * 16)));
+    let shades = this.shadedSprites.get(type);
+    if (!shades) {
+      shades = new Map<number, HTMLCanvasElement>();
+      this.shadedSprites.set(type, shades);
+    }
+    const cached = shades.get(level);
+    if (cached) return cached;
+    const source = this.getSpriteTexture(type);
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width;
+    canvas.height = source.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas 2D is unavailable for shaded sprite textures.');
+    context.imageSmoothingEnabled = false;
+    context.filter = `brightness(${level / 16})`;
+    context.drawImage(source, 0, 0);
+    context.filter = 'none';
+    shades.set(level, canvas);
     return canvas;
   }
 

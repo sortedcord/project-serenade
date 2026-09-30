@@ -42,6 +42,7 @@ The gold marker on the map is an exit. Walk into it to move to another submap; r
 ## How it works
 
 - **Rendering:** TypeScript, Canvas 2D, and a grid DDA raycaster create the pseudo-3D view. Wall depth is reused for sprite occlusion; shading includes distance falloff and configurable ambient occlusion.
+- **Lighting:** Local lamp illumination is baked into a world-anchored light map when a map is first used, avoiding per-frame map scans and light rays; ambient brightness and fog remain renderer-controlled.
 - **Worlds:** A seeded generator builds and validates tile maps, then links them into a traversable world of cached submaps.
 - **Exploration:** The frameless minimap remembers seen geometry per map. The separate full map and performance panel are optional debugging tools.
 
@@ -50,7 +51,7 @@ The gold marker on the map is an exit. Walk into it to move to another submap; r
 - `src/engine` — game loop, renderer, raycasting, movement, input, settings, and HUD
 - `src/generation` — seeded map generation, validation, and grid algorithms
 - `src/world` — maps, entities, exits, and transitions
-- `src/themes` — map atmosphere presets
+- `src/content` — authored game content, including map atmosphere presets
 - `src/debug` — full-map and debug overlays
 - `tests` — generation, map, rendering, input, and settings tests
 

@@ -1,6 +1,7 @@
+import { LAMP_LIGHT } from '../content/lighting';
 import type { GameMap, GeneratedRoom } from '../world/GameMap';
 import type { MapTheme } from '../themes/MapTheme';
-import { themes } from '../themes/themes';
+import { themes } from '../content/themes';
 import { TileTypes } from '../world/TileTypes';
 import { SeededRandom } from './SeededRandom';
 import { validateMap } from './MapValidator';
@@ -126,7 +127,25 @@ function buildMap(options: NormalizedOptions, seed: string): GameMap {
       occupied.add(key);
       const type = random.pick(options.themeData.propTypes);
       const properties = type === 'terminal' ? { interactable: true, label: 'Inactive terminal' } : undefined;
-      entities.push({ id: `prop-${entities.length}`, type, x: x + 0.5, y: y + 0.5, properties });
+      entities.push({ id: `prop-${entities.length}`, type, x: x + 0.5, y: y + 0.5, properties, ...(type === 'lamp' ? { light: { ...LAMP_LIGHT } } : {}) });
+    }
+  }
+  // Guarantee spawn-room lighting without consuming randomness or displacing props.
+  let spawnLamp = entities.find(entity => entity.type === 'lamp' && Math.floor(entity.x) >= spawnRoom.x && Math.floor(entity.x) < spawnRoom.x + spawnRoom.width && Math.floor(entity.y) >= spawnRoom.y && Math.floor(entity.y) < spawnRoom.y + spawnRoom.height);
+  if (!spawnLamp) {
+    for (let y = spawnRoom.y; y < spawnRoom.y + spawnRoom.height && !spawnLamp; y++) for (let x = spawnRoom.x; x < spawnRoom.x + spawnRoom.width && !spawnLamp; x++) {
+      const key = `${x},${y}`;
+      if (occupied.has(key)) continue;
+      const entityIndex = entities.findIndex(entity => Math.floor(entity.x) === x && Math.floor(entity.y) === y);
+      if (entityIndex === -1) {
+        occupied.add(key);
+        entities.push({ id: `prop-${entities.length}`, type: 'lamp', x: x + 0.5, y: y + 0.5, light: { ...LAMP_LIGHT } });
+        spawnLamp = entities[entities.length - 1];
+      } else {
+        const existing = entities[entityIndex]!;
+        entities[entityIndex] = { id: existing.id, type: 'lamp', x: existing.x, y: existing.y, light: { ...LAMP_LIGHT } };
+        spawnLamp = entities[entityIndex];
+      }
     }
   }
 

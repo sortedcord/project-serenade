@@ -2,7 +2,7 @@ import { DebugMapRenderer } from '../debug/DebugMapRenderer';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { validateMap } from '../generation/MapValidator';
 import type { GameSettings } from './GameSettings';
-import { themes } from '../themes/themes';
+import { themes } from '../content/themes';
 import type { GameMap } from '../world/GameMap';
 import { WorldManager } from '../world/WorldManager';
 import { Input } from './Input';

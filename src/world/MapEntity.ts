@@ -4,5 +4,6 @@ export interface MapEntity {
   x: number;
   y: number;
   rotation?: number;
+  light?: { intensity: number; radius: number };
   properties?: Record<string, unknown>;
 }

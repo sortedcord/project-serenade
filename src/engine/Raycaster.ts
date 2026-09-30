@@ -19,6 +19,8 @@ export class Raycaster {
   readonly wallStarts: Int16Array;
   readonly cornerOcclusion: Float32Array;
   readonly wallEnds: Int16Array;
+  readonly hitWorldX: Float64Array;
+  readonly hitWorldY: Float64Array;
   readonly hitTileX: Int16Array;
   readonly hitTileY: Int16Array;
   visibleCells = new Uint8Array(0);
@@ -31,6 +33,8 @@ export class Raycaster {
     this.wallStarts = new Int16Array(width);
     this.wallEnds = new Int16Array(width);
     this.cornerOcclusion = new Float32Array(width);
+    this.hitWorldX = new Float64Array(width);
+    this.hitWorldY = new Float64Array(width);
     this.hitTileX = new Int16Array(width);
     this.hitTileY = new Int16Array(width);
   }
@@ -80,7 +84,9 @@ export class Raycaster {
       const wallHeight = Math.floor(this.height / distance);
       const startY = Math.max(0, Math.floor(centerY - wallHeight / 2));
       const endY = Math.min(this.height - 1, Math.floor(centerY + wallHeight / 2));
-      let wallHit = side === 0 ? player.positionY + distance * rayY : player.positionX + distance * rayX;
+      const hitWorldX = player.positionX + distance * rayX;
+      const hitWorldY = player.positionY + distance * rayY;
+      let wallHit = side === 0 ? hitWorldY : hitWorldX;
       wallHit -= Math.floor(wallHit);
       let textureX = Math.floor(wallHit * 32);
       if ((side === 0 && rayX > 0) || (side === 1 && rayY < 0)) textureX = 31 - textureX;
@@ -95,6 +101,9 @@ export class Raycaster {
       const nearShadow = near !== undefined && near !== 0 ? Math.max(0, 1 - wallHit * 4) : 0;
       const farShadow = far !== undefined && far !== 0 ? Math.max(0, 1 - (1 - wallHit) * 4) : 0;
       this.cornerOcclusion[x] = Math.max(nearShadow, farShadow);
+      const openSideOffset = 1e-4;
+      this.hitWorldX[x] = hitWorldX - (side === 0 ? stepX * openSideOffset : 0);
+      this.hitWorldY[x] = hitWorldY - (side === 1 ? stepY * openSideOffset : 0);
       this.depthBuffer[x] = distance;
       this.wallTypes[x] = tile;
       this.hitSides[x] = side;

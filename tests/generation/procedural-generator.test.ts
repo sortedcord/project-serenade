@@ -3,6 +3,7 @@ import { generateMap } from '../../src/generation/ProceduralGenerator';
 import { validateMap } from '../../src/generation/MapValidator';
 import { floodFill } from '../../src/generation/FloodFill';
 import { TileTypes } from '../../src/world/TileTypes';
+import { LAMP_LIGHT } from '../../src/content/lighting';
 
 describe('procedural map generation', () => {
   it('generates identical maps for the same seed and options', () => {
@@ -24,6 +25,18 @@ describe('procedural map generation', () => {
     const reached = floodFill(map.tiles, Math.floor(map.playerSpawn.x), Math.floor(map.playerSpawn.y));
     expect(map.exits.every(exit => reached.has(`${exit.x},${exit.y}`))).toBe(true);
     expect(map.entities.every(entity => `${Math.floor(entity.x)},${Math.floor(entity.y)}` !== `${Math.floor(map.playerSpawn.x)},${Math.floor(map.playerSpawn.y)}`)).toBe(true);
+  });
+  it('guarantees a valid spawn-room lamp with the shared light descriptor', () => {
+    const map = generateMap({ seed: 'spawn-light', propDensity: 0 });
+    const spawnX = Math.floor(map.playerSpawn.x), spawnY = Math.floor(map.playerSpawn.y);
+    const spawnRoom = map.rooms.find(room => spawnX >= room.x && spawnX < room.x + room.width && spawnY >= room.y && spawnY < room.y + room.height)!;
+    const lamp = map.entities.find(entity => entity.type === 'lamp' && Math.floor(entity.x) >= spawnRoom.x && Math.floor(entity.x) < spawnRoom.x + spawnRoom.width && Math.floor(entity.y) >= spawnRoom.y && Math.floor(entity.y) < spawnRoom.y + spawnRoom.height);
+    expect(lamp).toBeDefined();
+    expect(map.tiles[Math.floor(lamp!.y)]![Math.floor(lamp!.x)]).toBe(TileTypes.Floor);
+    expect(`${Math.floor(lamp!.x)},${Math.floor(lamp!.y)}`).not.toBe(`${spawnX},${spawnY}`);
+    expect(map.exits.some(exit => exit.x === Math.floor(lamp!.x) && exit.y === Math.floor(lamp!.y))).toBe(false);
+    expect(lamp!.light).toEqual(LAMP_LIGHT);
+    expect(map.entities.filter(entity => entity.type === 'lamp').every(entity => entity.light && entity.light.intensity > 0 && entity.light.radius > 0)).toBe(true);
   });
 
   it('honors configured dimensions, theme metadata, room count, and material set', () => {
