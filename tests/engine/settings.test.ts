@@ -44,3 +44,4 @@ describe('player settings', () => {
     expect(loadGameSettings(storage).minimapSize).toBe(DEFAULT_GAME_SETTINGS.minimapSize);
   });
 });
+

@@ -1,6 +1,7 @@
 import type { SettingsScreen } from './SettingsScreen';
+import type { ControllerState } from './GamepadInput';
 
-/** Coordinates gameplay pause, focus loss, pointer release, and menu navigation. */
+/** Keyboard Resume captures the mouse; controller Resume needs no pointer lock. */
 export class PauseMenu {
   private readonly shade: HTMLElement;
   private readonly resumeButton: HTMLButtonElement;
@@ -16,12 +17,11 @@ export class PauseMenu {
     const shade = document.querySelector<HTMLElement>('#pause-shade');
     const resume = document.querySelector<HTMLButtonElement>('#pause-resume');
     const settingsButton = document.querySelector<HTMLButtonElement>('#pause-settings');
-    if (!shade || !resume || !settingsButton) throw new Error('Game page is missing the pause menu.');
+    const captureError = document.querySelector<HTMLElement>('#pause-capture-error');
+    if (!shade || !resume || !settingsButton || !captureError) throw new Error('Game page is missing the pause menu.');
     this.shade = shade;
     this.resumeButton = resume;
     this.settingsButton = settingsButton;
-    const captureError = document.querySelector<HTMLElement>('#pause-capture-error');
-    if (!captureError) throw new Error('Game page is missing the pointer capture error message.');
     this.captureError = captureError;
     this.buttons = [resume, settingsButton];
     resume.addEventListener('click', this.resume);
@@ -51,12 +51,19 @@ export class PauseMenu {
     this.updateSelection();
   };
 
+  private finishResume(): void {
+    this.resumeRequested = false;
+    this.captureError.textContent = '';
+    this.shade.hidden = true;
+    this.paused = false;
+    this.onPauseChange(false);
+    this.canvas.focus();
+  }
+
   private readonly resume = (): void => {
     if (this.resumeRequested) return;
     this.resumeRequested = true;
     this.captureError.textContent = '';
-    // Called directly by the real click/keyboard gesture. Do not unpause until
-    // pointerlockchange confirms capture, including browsers returning void.
     try {
       const request = this.canvas.requestPointerLock();
       if (request) void request.catch(this.onPointerLockRequestFailure);
@@ -71,34 +78,44 @@ export class PauseMenu {
     this.captureError.textContent = 'Mouse capture was refused by the browser. Press Resume to try again.';
   };
 
-  private readonly openSettings = (): void => {
-    this.shade.hidden = true;
-    this.settings.open();
-  };
+  private readonly openSettings = (): void => { this.shade.hidden = true; this.settings.open(); };
   private readonly onResumeFocus = (): void => { this.selected = 0; this.updateSelection(); };
   private readonly onSettingsFocus = (): void => { this.selected = 1; this.updateSelection(); };
   private readonly onVisibilityChange = (): void => { if (document.hidden) this.pause(); };
   private readonly onPointerLockChange = (): void => {
     const locked = document.pointerLockElement === this.canvas;
-    if (locked && this.resumeRequested) {
-      this.resumeRequested = false;
-      this.shade.hidden = true;
-      this.paused = false;
-      this.onPauseChange(false);
-      this.canvas.focus();
-    } else if (locked && this.paused) {
-      document.exitPointerLock();
-    } else if (this.pointerWasLocked && !locked) {
-      this.pause();
-    }
+    if (locked && this.resumeRequested) this.finishResume();
+    else if (locked && this.paused) document.exitPointerLock();
+    else if (this.pointerWasLocked && !locked) this.pause();
     this.pointerWasLocked = locked;
   };
+
+  handleController(controller: ControllerState): void {
+    if (controller.disconnected) { this.pause(); return; }
+    if (!this.paused) {
+      if (controller.pause || controller.back) this.pause();
+      return;
+    }
+    if (!document.hasFocus() || document.hidden) return;
+    if (this.settings.isOpen) {
+      this.settings.handleController(controller);
+      return;
+    }
+    if (controller.pause || controller.back) { this.finishResume(); return; }
+    if (controller.up || controller.down) {
+      this.selected = (this.selected + (controller.down ? 1 : -1) + this.buttons.length) % this.buttons.length;
+      this.buttons[this.selected]!.focus(); this.updateSelection();
+    }
+    if (controller.confirm) {
+      if (this.selected === 0) this.finishResume();
+      else this.openSettings();
+    }
+  }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     if (key === 'escape') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
+      event.preventDefault(); event.stopImmediatePropagation();
       if (event.repeat) return;
       if (this.settings.isOpen) this.settings.close();
       else if (this.paused) this.resume();
@@ -113,15 +130,12 @@ export class PauseMenu {
     event.stopImmediatePropagation();
     if (key === 'w' || key === 'arrowup' || key === 's' || key === 'arrowdown' || key === 'tab') {
       event.preventDefault();
-      this.selected = (this.selected + 1) % this.buttons.length;
-      this.buttons[this.selected]!.focus();
-      this.updateSelection();
+      const direction = key === 'w' || key === 'arrowup' || (key === 'tab' && event.shiftKey) ? -1 : 1;
+      this.selected = (this.selected + direction + this.buttons.length) % this.buttons.length;
+      this.buttons[this.selected]!.focus(); this.updateSelection();
     } else if (key === 'enter' || key === ' ') {
       event.preventDefault();
-      if (!event.repeat) {
-        if (this.selected === 0) this.resume();
-        else this.openSettings();
-      }
+      if (!event.repeat) { if (this.selected === 0) this.resume(); else this.openSettings(); }
     }
   };
 
@@ -131,14 +145,10 @@ export class PauseMenu {
     if (!first || !last) return;
     if (event.shiftKey && (document.activeElement === first || document.activeElement?.id === 'settings-panel')) {
       event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus();
-    }
+    } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
 
-  private updateSelection(): void {
-    this.buttons.forEach((button, index) => button.classList.toggle('selected', index === this.selected));
-  }
+  private updateSelection(): void { this.buttons.forEach((button, index) => button.classList.toggle('selected', index === this.selected)); }
 
   destroy(): void {
     this.resumeButton.removeEventListener('click', this.resume);

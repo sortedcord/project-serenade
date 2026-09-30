@@ -12,8 +12,9 @@ import { MinimapRenderer } from './MinimapRenderer';
 import { SettingsScreen } from './SettingsScreen';
 import { PauseMenu } from './PauseMenu';
 import { DebugInfoPanel } from './DebugInfoPanel';
-import { FrameRateLimiter } from './FrameRateLimiter';
 import { nearestInteractable } from './SpriteAssets';
+import { FrameRateLimiter } from './FrameRateLimiter';
+import { GamepadInput } from './GamepadInput';
 /** Owns the frame loop and composes the small rendering, input, and world systems. */
 export class Game {
   readonly renderer: Renderer;
@@ -27,18 +28,20 @@ export class Game {
   private frameHandle = 0;
   private previousTime = 0;
   private readonly frameRateLimiter = new FrameRateLimiter(0);
-  private fps = 0;
-  private fpsFrames = 0;
-  private fpsElapsed = 0;
-  private showMap = false;
-  private destroyed = false;
   private readonly settingsScreen: SettingsScreen;
+  private destroyed = false;
+  private readonly gamepad = new GamepadInput();
+  private readonly gamepadStatus: HTMLElement;
+  private showMap = false;
   private readonly pauseMenu: PauseMenu;
   private transitionCooldown = 0;
   private readonly prompt: HTMLElement;
 
   constructor(canvas: HTMLCanvasElement, prompt: HTMLElement, seed: string) {
     this.prompt = prompt;
+    const gamepadStatus = document.querySelector<HTMLElement>('#gamepad-status');
+    if (!gamepadStatus) throw new Error('Game page is missing the controller status.');
+    this.gamepadStatus = gamepadStatus;
     this.world = new WorldManager(seed);
     this.player = createPlayer(this.world.currentMap);
     this.renderer = new Renderer(canvas);
@@ -83,11 +86,18 @@ export class Game {
 
   private readonly frame = (time: number): void => {
     if (this.destroyed) return;
+    const controller = this.gamepad.poll();
+    const wasPaused = this.pauseMenu.paused;
+    this.pauseMenu.handleController(controller);
+    // Do not let the button that resumes gameplay also interact with an entity.
+    if (!wasPaused && !this.pauseMenu.paused) this.input.queueControllerActions(controller);
+    if (this.gamepadStatus.textContent !== controller.status) this.gamepadStatus.textContent = controller.status;
     if (!this.frameRateLimiter.shouldRender(time)) {
       this.frameHandle = requestAnimationFrame(this.frame);
       return;
     }
-    const dt = Math.min(.08, Math.max(0, (time - this.previousTime) / 1000));
+    const elapsed = Math.max(0, (time - this.previousTime) / 1000);
+    const dt = Math.min(.08, elapsed);
     this.previousTime = time;
     if (this.pauseMenu.paused) {
       this.renderer.render(this.world.currentMap, this.player);
@@ -95,35 +105,29 @@ export class Game {
       this.frameHandle = requestAnimationFrame(this.frame);
       return;
     }
-    const actions = this.input.update(this.world.currentMap, dt);
+    const actions = this.input.update(this.world.currentMap, dt, controller);
     if (actions.toggleDebugMap) this.showMap = !this.showMap;
-    if (actions.interact) this.interact();
+    if (actions.interact && !wasPaused) this.interact();
     this.transitionCooldown = Math.max(0, this.transitionCooldown - dt);
     this.transitionAtExit();
-    this.updateFps(dt);
-    this.debugInfo.updateFrame(dt);
+    this.debugInfo.updateFrame(elapsed);
     const target = nearestInteractable(this.world.currentMap.entities, this.player.positionX, this.player.positionY, Math.atan2(this.player.directionY, this.player.directionX), 1.7);
-    this.prompt.textContent = target ? `E · ${String(target.properties?.label ?? target.type)}` : '';
+    this.prompt.textContent = target ? `${controller.connected ? 'A' : 'E'} · ${String(target.properties?.label ?? target.type)}` : '';
     this.renderer.render(this.world.currentMap, this.player);
     this.minimap.draw(this.world.currentMap, this.player, this.renderer.raycaster);
     this.drawOverlays();
     this.frameHandle = requestAnimationFrame(this.frame);
   };
 
-  private updateFps(dt: number): void {
-    this.fpsFrames++; this.fpsElapsed += dt;
-    if (this.fpsElapsed >= .5) { this.fps = Math.round(this.fpsFrames / this.fpsElapsed); this.fpsFrames = 0; this.fpsElapsed = 0; }
-  }
   private drawOverlays(): void {
     const context = this.renderer.context, map = this.world.currentMap;
-    context.fillStyle = '#e0dfc7'; context.font = '7px monospace';
     const locationName = document.querySelector<HTMLElement>('#location-name');
     if (locationName) locationName.textContent = map.metadata.title ?? map.id;
     if (this.showMap) this.debugMap.draw(context, map, { x: this.player.positionX, y: this.player.positionY, angle: Math.atan2(this.player.directionY, this.player.directionX) }, 8, 22, 150);
     const errors = validateMap(map);
     this.debugInfo.draw(map, this.player, this.world.state.discoveredMapIds.length, errors);
     this.debug.draw(context, [
-      `FPS ${this.fps}`, `MAP ${map.id}`, `SEED ${map.metadata.seed ?? ''}`,
+      `MAP ${map.id}`, `SEED ${map.metadata.seed ?? ''}`,
       `POS ${this.player.positionX.toFixed(2)},${this.player.positionY.toFixed(2)}`,
       `ANGLE ${Math.atan2(this.player.directionY, this.player.directionX).toFixed(2)}`,
       `ROOMS ${map.rooms.length} PROPS ${map.entities.length}`, `VALID ${errors.length ? errors[0] : 'yes'}`,

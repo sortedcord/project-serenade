@@ -11,7 +11,7 @@ npm run build
 npm test
 ```
 
-Open the Vite URL to start at the pause menu. Press **Enter** on **Resume** (or click it) to capture the mouse and begin playing in one action. Add `?seed=some-text` to reproduce a generated world. Browsers require this user gesture for cursor capture; if capture is refused, the game stays paused and Resume lets you retry.
+Open the Vite URL to start at the pause menu. Press **Enter** on **Resume** (or click it) to capture the mouse and begin playing in one action, or press **A** / **Menu** on an Xbox controller to resume without pointer lock. Add `?seed=some-text` to reproduce a generated world. Browsers require a keyboard/mouse gesture for cursor capture; controller look works independently of it.
 
 ## Controls
 
@@ -22,10 +22,11 @@ Open the Vite URL to start at the pause menu. Press **Enter** on **Resume** (or 
 - **M** toggle the top-down map
 - **F3** toggle development stats
 - **R** generate a fresh seeded world
-- **Escape** pauses and releases mouse capture; press it again to capture the mouse and resume. Losing browser focus also pauses. Gameplay resumes only after mouse capture succeeds; no separate click on the view is needed.
+- **Escape** pauses and releases mouse capture; press it again to capture the mouse and resume. Losing browser focus also pauses. Mouse/keyboard Resume waits for capture; controller Resume does not need cursor capture.
 - In the pause menu, **W/S** or **↑/↓** select **Resume** or **Settings**; **Enter** activates the selection.
 - Open **Settings** from the pause menu to adjust walking speed, bobbing rate, mouse look sensitivity, ambient occlusion, minimap size (96–256 pixels), minimap range (8–40 tiles), and minimap screen corner. Changes apply immediately and save in this browser; 0% disables occlusion shading. **Done** or **Escape** returns to the pause menu.
 - **Frame rate limit** in Settings: 1–119 FPS, or move the slider fully right for **Unlimited**. Changes take effect immediately and persist on this device.
+- **Xbox controller:** left stick move/strafe; right stick turn/look; **A** interact/select; **Y** map; **Menu/Start** pause/resume; **B** pause/back/resume. In menus, **D-pad** or left stick selects controls; **left/right** adjusts sliders/selects; **A** toggles checkboxes/buttons; **B** returns. Disconnecting the controller pauses safely. Focus the page and press a controller button for browser detection; the HUD reports unsupported or blocked API access. If unavailable over LAN HTTP, use HTTPS or localhost. Standard-mapped controllers and unmapped Xbox/XInput IDs are supported.
 
 An exit is the gold marker on the map; walk into it to travel to another cached submap. Returning through its reciprocal connection restores the original map.
 

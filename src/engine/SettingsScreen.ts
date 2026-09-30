@@ -1,4 +1,5 @@
 import { DEBUG_INFO_FIELDS, GAME_SETTING_RANGES, MINIMAP_POSITIONS, loadGameSettings, saveGameSettings, type DebugInfoField, type GameSettings, type MinimapPosition } from './GameSettings';
+import type { ControllerState } from './GamepadInput';
 
 const controls = {
   movementSpeed: { input: '#setting-walk', output: '#setting-walk-value', digits: 1 },
@@ -80,6 +81,30 @@ export class SettingsScreen {
   }
 
   get isOpen(): boolean { return !this.shade.hidden; }
+  handleController(controller: ControllerState): void {
+    if (controller.back || controller.pause) { this.close(); return; }
+    const elements = this.panel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('button, input, select');
+    if (!elements.length) return;
+    let index = Array.from(elements).findIndex(element => element === document.activeElement);
+    if (controller.up || controller.down || index < 0) {
+      const direction = controller.up ? -1 : 1;
+      index = index < 0 ? 0 : (index + direction + elements.length) % elements.length;
+      elements[index]!.focus();
+    }
+    const active = elements[index < 0 ? 0 : index]!;
+    if (controller.left || controller.right) {
+      const direction = controller.right ? 1 : -1;
+      if (active instanceof HTMLInputElement && active.type === 'range') {
+        active.value = String(Math.max(Number(active.min), Math.min(Number(active.max), Number(active.value) + direction * Number(active.step))));
+        active.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (active instanceof HTMLSelectElement) {
+        active.selectedIndex = (active.selectedIndex + direction + active.options.length) % active.options.length;
+        active.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    if (controller.confirm && (active instanceof HTMLButtonElement || (active instanceof HTMLInputElement && active.type === 'checkbox'))) active.click();
+  }
+
 
   destroy(): void {
     this.closeButton.removeEventListener('click', this.close);
